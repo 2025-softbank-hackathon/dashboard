@@ -30,9 +30,9 @@ function SinglePochita({ bottom, duration, delay, size, id }) {
       key={`${id}-${key}`}
       className="fixed z-20 pointer-events-none"
       style={{ bottom, opacity: 0.3 }}
-      initial={{ left: '-150px' }}
+      initial={{ left: 'calc(100% + 150px)' }}
       animate={{
-        left: 'calc(100% + 150px)'
+        left: '-150px'
       }}
       transition={{
         duration,
@@ -44,7 +44,7 @@ function SinglePochita({ bottom, duration, delay, size, id }) {
         src="https://d3ro18w755ioec.cloudfront.net/assets/pochita-unscreen.gif"
         alt="Pochita walking"
         className={`${size} w-auto`}
-        style={{ transform: 'scaleX(1)' }}
+        style={{ transform: 'scaleX(-1)' }}
       />
     </motion.div>
   )

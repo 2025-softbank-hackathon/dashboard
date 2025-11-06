@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 // Multiple Pochitas moving left - spaced out to not interfere with content
 const pochitaPositions = [
   { id: 1, top: '10%', delay: 0 },
-  { id: 2, top: '85%', delay: 8 }
+  { id: 2, top: '85%', delay: 8 },
+  { id: 3, top: '50%', delay: 4 }
 ]
 
 function MovingPochita({ top, delay, id }) {
@@ -26,9 +27,9 @@ function MovingPochita({ top, delay, id }) {
       key={`${id}-${key}`}
       className="fixed z-20 pointer-events-none"
       style={{ top }}
-      initial={{ right: '-200px', opacity: 0 }}
+      initial={{ left: 'calc(100% + 200px)', opacity: 0 }}
       animate={{
-        right: 'calc(100% + 200px)',
+        left: '-200px',
         opacity: [0, 1, 1, 0]
       }}
       transition={{

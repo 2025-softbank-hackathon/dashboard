@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 // Multiple Pochitas for page 3 - moving left at top and bottom margins
 const pochitaPositions = [
   { id: 1, top: '12%', delay: 0 },
-  { id: 2, top: '90%', delay: 12 }
+  { id: 2, top: '90%', delay: 12 },
+  { id: 3, top: '60%', delay: 6 }
 ]
 
 function MovingPochita({ top, delay, id }) {
@@ -26,9 +27,9 @@ function MovingPochita({ top, delay, id }) {
       key={`${id}-${key}`}
       className="fixed z-20 pointer-events-none"
       style={{ top }}
-      initial={{ right: '-200px', opacity: 0 }}
+      initial={{ left: 'calc(100% + 200px)', opacity: 0 }}
       animate={{
-        right: 'calc(100% + 200px)',
+        left: '-200px',
         opacity: [0, 1, 1, 0]
       }}
       transition={{
