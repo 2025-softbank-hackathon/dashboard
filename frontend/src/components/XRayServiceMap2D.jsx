@@ -126,16 +126,16 @@ function CircularNode({ node, delay }) {
       transition={{ duration: 0.6, delay, type: 'spring', stiffness: 100 }}
       className="absolute"
       style={{
-        left: node.x - 80,
-        top: node.y - 80,
-        width: '160px',
-        height: '160px'
+        left: node.x - 100,
+        top: node.y - 100,
+        width: '200px',
+        height: '200px'
       }}
     >
       {/* Outer ring with metrics */}
       <div className={`w-full h-full rounded-full border-5 ${node.ringColor} bg-white/5 flex items-center justify-center relative shadow-xl cursor-pointer hover:scale-105 transition-transform`}>
         {/* Inner circle */}
-        <div className={`w-32 h-32 rounded-full ${node.color} flex items-center justify-center shadow-lg`}>
+        <div className={`w-40 h-40 rounded-full ${node.color} flex items-center justify-center shadow-lg`}>
           <div className="text-center">
             <div className="text-white text-base font-bold">avg {avgTime}ms</div>
             <div className="text-white text-sm opacity-80">{throughput} t/min</div>
