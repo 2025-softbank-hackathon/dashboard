@@ -1,33 +1,30 @@
 import { motion } from 'framer-motion'
 
 export default function XRayServiceMap2D({ services = [], showGreen = true }) {
-  // Clean circular layout inspired by AWS X-Ray service map
+  // Clean circular layout matching the reference image - spread out widely
   const architecture = {
-    // Central node - ALB
-    alb: { x: 375, y: 275, label: 'ALB', color: 'bg-pink-500', ringColor: 'border-pink-400' },
+    // Left - Client
+    user: { x: 100, y: 300, label: 'Clients', color: 'bg-gray-500', ringColor: 'border-gray-400', icon: '👥' },
 
-    // Left - User/Client
-    user: { x: 100, y: 275, label: 'Client', color: 'bg-purple-500', ringColor: 'border-purple-400' },
+    // Central node - Main service (Scorekeep)
+    alb: { x: 350, y: 300, label: 'Scorekeep', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::ElasticBeanstalk::Environment' },
 
-    // Top row - DynamoDB services
+    // Top row - spread out
     dynamoServices: [
-      { x: 375, y: 80, label: 'User Table', color: 'bg-green-500', ringColor: 'border-green-400' },
-      { x: 600, y: 120, label: 'SNS', color: 'bg-red-500', ringColor: 'border-red-400' }
+      { x: 550, y: 100, label: 'scorekeep-user', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' },
+      { x: 900, y: 100, label: 'SNS', color: 'bg-red-500', ringColor: 'border-red-400', subtitle: 'AWS::SNS' }
     ],
 
-    // Middle row - Blue/Green environments
+    // Right middle
     environments: [
-      ...(showGreen ? [
-        { x: 600, y: 275, label: 'Green-ECS', color: 'bg-green-500', ringColor: 'border-green-400' }
-      ] : [])
+      { x: 700, y: 300, label: 'scorekeep-move', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' },
+      { x: 1050, y: 300, label: 'scorekeep-game', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' }
     ],
 
-    // Bottom row - Backend services
+    // Bottom row - spread out
     backendServices: [
-      { x: 250, y: 420, label: 'Move Table', color: 'bg-green-500', ringColor: 'border-green-400' },
-      { x: 500, y: 420, label: 'Game Table', color: 'bg-green-500', ringColor: 'border-green-400' },
-      { x: 375, y: 520, label: 'State Table', color: 'bg-green-500', ringColor: 'border-green-400' },
-      { x: 150, y: 500, label: 'Session Table', color: 'bg-green-500', ringColor: 'border-green-400' }
+      { x: 550, y: 500, label: 'scorekeep-state', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' },
+      { x: 900, y: 500, label: 'scorekeep-session', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' }
     ]
   }
 
@@ -61,7 +58,7 @@ export default function XRayServiceMap2D({ services = [], showGreen = true }) {
   return (
     <div className="w-full h-full relative bg-black/10 rounded-xl overflow-hidden flex items-center justify-center">
       {/* SVG for connection lines */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }} viewBox="0 0 750 600" preserveAspectRatio="xMidYMid meet">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }} viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid meet">
         <defs>
           {/* Animated gradient for lines */}
           <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -74,15 +71,15 @@ export default function XRayServiceMap2D({ services = [], showGreen = true }) {
         {connections.map((conn, i) => (
           <motion.line
             key={i}
-            x1={conn.from.x + 50}
-            y1={conn.from.y + 50}
-            x2={conn.to.x + 50}
-            y2={conn.to.y + 50}
+            x1={conn.from.x}
+            y1={conn.from.y}
+            x2={conn.to.x}
+            y2={conn.to.y}
             className={conn.color}
-            strokeWidth="3"
-            strokeDasharray="8,4"
+            strokeWidth="2"
+            strokeDasharray="5,5"
             initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 0.5 }}
+            animate={{ pathLength: 1, opacity: 0.3 }}
             transition={{ duration: 1, delay: i * 0.1 }}
           />
         ))}
@@ -90,7 +87,7 @@ export default function XRayServiceMap2D({ services = [], showGreen = true }) {
 
       {/* Nodes Container with proper scaling */}
       <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 2 }}>
-        <div className="relative" style={{ width: '750px', height: '600px' }}>
+        <div className="relative" style={{ width: '1200px', height: '600px', transform: 'scale(0.85)' }}>
           {/* User/Client */}
           <CircularNode node={architecture.user} delay={0} />
 
@@ -129,30 +126,30 @@ function CircularNode({ node, delay }) {
       transition={{ duration: 0.6, delay, type: 'spring', stiffness: 100 }}
       className="absolute"
       style={{
-        left: node.x - 55,
-        top: node.y - 55,
-        width: '110px',
-        height: '110px'
+        left: node.x - 60,
+        top: node.y - 60,
+        width: '120px',
+        height: '120px'
       }}
     >
       {/* Outer ring with metrics */}
-      <div className={`w-full h-full rounded-full border-4 ${node.ringColor} bg-white/5 backdrop-blur-sm flex items-center justify-center relative shadow-xl cursor-pointer hover:scale-110 transition-transform`}>
+      <div className={`w-full h-full rounded-full border-4 ${node.ringColor} bg-white/5 flex items-center justify-center relative shadow-xl cursor-pointer hover:scale-105 transition-transform`}>
         {/* Inner circle */}
-        <div className={`w-20 h-20 rounded-full ${node.color} flex items-center justify-center shadow-lg`}>
+        <div className={`w-24 h-24 rounded-full ${node.color} flex items-center justify-center shadow-lg`}>
           <div className="text-center">
-            <div className="text-white text-xs font-bold">avg {avgTime}ms</div>
-            <div className="text-white text-[10px] opacity-80">{throughput} t/min</div>
+            <div className="text-white text-sm font-bold">avg {avgTime}ms</div>
+            <div className="text-white text-xs opacity-80">{throughput} t/min</div>
           </div>
         </div>
       </div>
 
       {/* Label below */}
-      <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-        <div className="text-white text-xs font-semibold text-center drop-shadow-lg">
+      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+        <div className="text-white text-sm font-semibold text-center drop-shadow-lg">
           {node.label}
         </div>
-        <div className="text-white/60 text-[10px] text-center">
-          AWS::{node.label.includes('Table') ? 'DynamoDB' : node.label.includes('SNS') ? 'SNS' : node.label.includes('ECS') ? 'ECS' : 'Service'}
+        <div className="text-white/60 text-xs text-center">
+          {node.subtitle || `AWS::${node.label.includes('Table') ? 'DynamoDB' : node.label.includes('SNS') ? 'SNS' : 'Service'}`}
         </div>
       </div>
 

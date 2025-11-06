@@ -90,7 +90,7 @@ function App() {
 
   return (
     <div className="w-screen h-screen overflow-hidden relative">
-      {/* Background Video - much higher opacity to be clearly visible */}
+      {/* Background Video - subtle opacity to not overwhelm content */}
       <video
         ref={videoRef}
         autoPlay
@@ -98,7 +98,7 @@ function App() {
         muted
         playsInline
         className="fixed top-0 left-0 w-full h-full object-cover z-0"
-        style={{ pointerEvents: 'none', opacity: 0.6 }}
+        style={{ pointerEvents: 'none', opacity: 1 }}
       >
         <source src="https://d3ro18w755ioec.cloudfront.net/assets/background-video.mp4" type="video/mp4" />
       </video>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import PochitaPage3 from './PochitaPage3'
 
 export default function SuccessScreen() {
   const [stats, setStats] = useState({
@@ -27,6 +28,9 @@ export default function SuccessScreen() {
 
   return (
     <div className="w-full h-screen relative overflow-hidden flex items-center justify-center bg-transparent">
+      {/* Pochita for page 3 */}
+      <PochitaPage3 />
+
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(20)].map((_, i) => (

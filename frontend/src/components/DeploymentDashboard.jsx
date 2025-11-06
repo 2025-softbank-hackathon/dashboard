@@ -209,7 +209,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       <PochitaStatic />
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10 px-8 py-4">
+      <div className="sticky top-0 z-50 bg-black/40 border-b border-white/10 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-white mb-1">
@@ -265,7 +265,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+            className="bg-black/30 rounded-2xl p-6 border border-white/10"
           >
             <PipelineStages
               currentStage={currentPipelineStage}
@@ -294,7 +294,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+            className="bg-black/30 rounded-2xl p-6 border border-white/10"
           >
             <h3 className="text-white text-2xl font-bold mb-4">
               Deployment Logs

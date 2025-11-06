@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import useDeploymentStore from '../store/useDeploymentStore'
 import XRayServiceMap2D from './XRayServiceMap2D'
+import PochitaPage2 from './PochitaPage2'
 
 export default function TrafficScreen({ onComplete, xrayServices }) {
   const { updateBlueMetrics, updateGreenMetrics, addLog } = useDeploymentStore()
@@ -46,6 +47,9 @@ export default function TrafficScreen({ onComplete, xrayServices }) {
 
   return (
     <div className="w-full h-screen relative overflow-hidden bg-transparent">
+      {/* Pochita for page 2 */}
+      <PochitaPage2 />
+
       {/* Header */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
         <h2 className="text-3xl font-bold text-white text-center">
@@ -57,7 +61,7 @@ export default function TrafficScreen({ onComplete, xrayServices }) {
       <div className="flex flex-col h-full pt-20 px-8 pb-8">
         {/* Traffic Progress Bar */}
         <div className="mb-6">
-          <div className="bg-black/20 backdrop-blur-md rounded-xl p-6 border border-white/20">
+          <div className="bg-black/40  rounded-xl p-6 border border-white/20">
             <div className="flex items-center justify-between mb-4">
               <div className="text-white">
                 <div className="text-sm text-white/70 mb-1">Traffic Distribution</div>
@@ -69,11 +73,11 @@ export default function TrafficScreen({ onComplete, xrayServices }) {
               </div>
 
               <div className="flex gap-4">
-                <div className="bg-blue-600/30 backdrop-blur-sm px-4 py-2 rounded-lg border border-blue-400/30">
+                <div className="bg-blue-600/30  px-4 py-2 rounded-lg border border-blue-400/30">
                   <div className="text-blue-300 text-xs mb-1">Blue Environment</div>
                   <div className="text-white text-xl font-bold">{100 - greenTraffic}%</div>
                 </div>
-                <div className="bg-green-600/30 backdrop-blur-sm px-4 py-2 rounded-lg border border-green-400/30">
+                <div className="bg-green-600/30  px-4 py-2 rounded-lg border border-green-400/30">
                   <div className="text-green-300 text-xs mb-1">Green Environment</div>
                   <div className="text-white text-xl font-bold">{greenTraffic}%</div>
                 </div>
@@ -97,7 +101,7 @@ export default function TrafficScreen({ onComplete, xrayServices }) {
         </div>
 
         {/* 2D X-Ray Architecture Diagram - Full Width */}
-        <div className="flex-1 bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+        <div className="flex-1 bg-black/40  rounded-2xl p-6 border border-white/10">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white text-2xl font-bold">
               AWS Architecture - Real-time Service Map
