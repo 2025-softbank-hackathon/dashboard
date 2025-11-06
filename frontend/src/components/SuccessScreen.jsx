@@ -26,7 +26,7 @@ export default function SuccessScreen() {
   }, [])
 
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900 relative overflow-hidden flex items-center justify-center">
+    <div className="w-full h-screen relative overflow-hidden flex items-center justify-center bg-transparent">
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(20)].map((_, i) => (

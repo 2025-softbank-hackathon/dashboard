@@ -4,6 +4,7 @@ import useDeploymentStore from '../store/useDeploymentStore'
 import PipelineStages from './PipelineStages'
 import CloudWatchMetrics from './CloudWatchMetrics'
 import LogStream from './LogStream'
+import PochitaStatic from './PochitaStatic'
 
 export default function DeploymentDashboard({ onDeploymentComplete, xrayServices }) {
   const {
@@ -203,9 +204,12 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
   }
 
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 overflow-y-auto">
+    <div className="w-full h-screen overflow-y-auto relative bg-transparent">
+      {/* Static Pochita */}
+      <PochitaStatic />
+
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-black/30 backdrop-blur-md border-b border-white/10 px-8 py-4">
+      <div className="sticky top-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-white mb-1">
@@ -261,7 +265,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+            className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
           >
             <PipelineStages
               currentStage={currentPipelineStage}
@@ -275,7 +279,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+          className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
         >
           <CloudWatchMetrics
             blueMetrics={blueMetrics}
@@ -290,7 +294,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+            className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
           >
             <h3 className="text-white text-2xl font-bold mb-4">
               Deployment Logs
