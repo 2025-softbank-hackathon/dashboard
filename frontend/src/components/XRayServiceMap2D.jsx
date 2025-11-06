@@ -126,29 +126,29 @@ function CircularNode({ node, delay }) {
       transition={{ duration: 0.6, delay, type: 'spring', stiffness: 100 }}
       className="absolute"
       style={{
-        left: node.x - 60,
-        top: node.y - 60,
-        width: '120px',
-        height: '120px'
+        left: node.x - 80,
+        top: node.y - 80,
+        width: '160px',
+        height: '160px'
       }}
     >
       {/* Outer ring with metrics */}
-      <div className={`w-full h-full rounded-full border-4 ${node.ringColor} bg-white/5 flex items-center justify-center relative shadow-xl cursor-pointer hover:scale-105 transition-transform`}>
+      <div className={`w-full h-full rounded-full border-5 ${node.ringColor} bg-white/5 flex items-center justify-center relative shadow-xl cursor-pointer hover:scale-105 transition-transform`}>
         {/* Inner circle */}
-        <div className={`w-24 h-24 rounded-full ${node.color} flex items-center justify-center shadow-lg`}>
+        <div className={`w-32 h-32 rounded-full ${node.color} flex items-center justify-center shadow-lg`}>
           <div className="text-center">
-            <div className="text-white text-sm font-bold">avg {avgTime}ms</div>
-            <div className="text-white text-xs opacity-80">{throughput} t/min</div>
+            <div className="text-white text-base font-bold">avg {avgTime}ms</div>
+            <div className="text-white text-sm opacity-80">{throughput} t/min</div>
           </div>
         </div>
       </div>
 
       {/* Label below */}
-      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-        <div className="text-white text-sm font-semibold text-center drop-shadow-lg">
+      <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+        <div className="text-white text-base font-semibold text-center drop-shadow-lg">
           {node.label}
         </div>
-        <div className="text-white/60 text-xs text-center">
+        <div className="text-white/60 text-sm text-center">
           {node.subtitle || `AWS::${node.label.includes('Table') ? 'DynamoDB' : node.label.includes('SNS') ? 'SNS' : 'Service'}`}
         </div>
       </div>
