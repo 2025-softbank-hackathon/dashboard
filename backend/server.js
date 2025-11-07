@@ -464,6 +464,44 @@ wss.on('connection', (ws) => {
 
                 break;
 
+            // 클라이언트가 1회성으로 메트릭 수집을 요청하면 즉시 수집 후 모든 클라이언트에게 브로드캐스트
+            case 'fetch_metrics':
+                try {
+                    let blueMetrics, greenMetrics;
+                    if (useMockData) {
+                        blueMetrics = generateMockMetrics('blue');
+                        greenMetrics = generateMockMetrics('green');
+                    } else {
+                        blueMetrics = await getCloudWatchMetrics('demo-blue-service');
+                        greenMetrics = await getCloudWatchMetrics('demo-green-service');
+                    }
+
+                    const payload = JSON.stringify({
+                        type: 'metrics',
+                        data: { blue: blueMetrics, green: greenMetrics }
+                    });
+
+                    // 모든 접속자에게 브로드캐스트
+                    wss.clients.forEach((client) => {
+                        if (client.readyState === WebSocket.OPEN) {
+                            client.send(payload);
+                        }
+                    });
+
+                    // Mock 로그도 함께 전송(옵션)
+                    if (useMockData) {
+                        const logPayload = JSON.stringify({ type: 'log', data: generateMockLogs() });
+                        wss.clients.forEach((client) => {
+                            if (client.readyState === WebSocket.OPEN) {
+                                client.send(logPayload);
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error('[ERROR] fetch_metrics failed:', e.message);
+                }
+                break;
+
             case 'stop_monitoring':
                 console.log('[STOP] Stopping monitoring...');
                 if (intervalId) {
