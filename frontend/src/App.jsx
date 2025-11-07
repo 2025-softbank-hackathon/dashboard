@@ -15,11 +15,11 @@ function App() {
 
   useEffect(() => {
     // Connect to WebSocket server
-    websocket.connect('ws://localhost:8080')
+    websocket.connect()
       .then(() => {
         setWsConnected(true)
-        // Start monitoring
-        websocket.startMonitoring()
+        // Client-driven polling every 5s
+        websocket.startPolling(5000)
       })
       .catch((error) => {
         console.error('Failed to connect to WebSocket:', error)
@@ -64,7 +64,7 @@ function App() {
 
     // Cleanup
     return () => {
-      websocket.stopMonitoring()
+      websocket.stopPolling()
       websocket.disconnect()
     }
   }, [])
