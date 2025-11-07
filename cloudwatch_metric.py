@@ -1,6 +1,7 @@
 import json
 import boto3
 from datetime import datetime, timedelta
+import os
 
 dynamodb = boto3.resource("dynamodb")
 cloudwatch = boto3.client("cloudwatch")
