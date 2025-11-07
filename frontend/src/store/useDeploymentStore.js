@@ -34,6 +34,10 @@ const useDeploymentStore = create((set) => ({
   // WebSocket connection
   wsConnected: false,
 
+  // Data mode and loading flags
+  isRealMode: false,
+  metricsLoading: false,
+
   // Actions
   setCurrentScreen: (screen) => set({ currentScreen: screen }),
 
@@ -60,6 +64,9 @@ const useDeploymentStore = create((set) => ({
   })),
 
   setWsConnected: (connected) => set({ wsConnected: connected }),
+
+  setIsRealMode: (isReal) => set({ isRealMode: !!isReal }),
+  setMetricsLoading: (loading) => set({ metricsLoading: !!loading }),
 
   // Start deployment
   startDeployment: () => set({ isDeploying: true, deployProgress: 0 }),
