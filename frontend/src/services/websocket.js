@@ -3,6 +3,7 @@ class WebSocketService {
     this.ws = null
     this.reconnectInterval = 3000
     this.listeners = new Map()
+    this._pollTimer = null
   }
 
   connect(url = 'ws://localhost:8080') {
@@ -86,6 +87,10 @@ class WebSocketService {
       this.ws.close()
       this.ws = null
     }
+    if (this._pollTimer) {
+      clearInterval(this._pollTimer)
+      this._pollTimer = null
+    }
   }
 
   // Convenience methods
@@ -119,6 +124,23 @@ class WebSocketService {
 
   useMockData() {
     this.send('use_mock_data')
+  }
+
+  // Client-driven polling every `intervalMs` to request fresh metrics
+  startPolling(intervalMs = 5000) {
+    if (this._pollTimer) clearInterval(this._pollTimer)
+    // Kick off immediately once
+    this.send('fetch_metrics')
+    this._pollTimer = setInterval(() => {
+      this.send('fetch_metrics')
+    }, intervalMs)
+  }
+
+  stopPolling() {
+    if (this._pollTimer) {
+      clearInterval(this._pollTimer)
+      this._pollTimer = null
+    }
   }
 }
 
