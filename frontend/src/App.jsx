@@ -2,14 +2,15 @@ import { useEffect, useState, useRef } from 'react'
 import useDeploymentStore from './store/useDeploymentStore'
 import websocket from './services/websocket'
 import DeploymentDashboard from './components/DeploymentDashboard'
-import TrafficScreen from './components/TrafficScreen'
+// import TrafficScreen from './components/TrafficScreen' // [Disabled] Page 2 (Traffic) is commented out per request
 import SuccessScreen from './components/SuccessScreen'
 
 function App() {
-  const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog } = useDeploymentStore()
+  const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog, setIsRealMode, setMetricsLoading, isRealMode } = useDeploymentStore()
   const [currentScreen, setCurrentScreen] = useState('deployment') // 'deployment', 'traffic', 'success'
   const [xrayServices, setXrayServices] = useState([])
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
+  const [dataMode, setDataMode] = useState('mock') // 'mock' | 'real'
   const videoRef = useRef(null)
   const audioRef = useRef(null)
 
@@ -34,6 +35,20 @@ function App() {
       if (data.data.green) {
         updateGreenMetrics(data.data.green)
       }
+
+      // When in Real mode, hide loader only after valid AWS numbers arrive
+      try {
+        if (isRealMode) {
+          const b = data.data.blue || {}
+          const g = data.data.green || {}
+          const isNum = (v) => typeof v === 'number' && !Number.isNaN(v)
+          const blueOk = isNum(b.cpu) || isNum(b.memory) || isNum(b.responseTime)
+          const greenOk = isNum(g.cpu) || isNum(g.memory) || isNum(g.responseTime)
+          if (blueOk || greenOk) {
+            setMetricsLoading(false)
+          }
+        }
+      } catch {}
     })
 
     // Listen to logs
@@ -70,7 +85,8 @@ function App() {
   }, [])
 
   const handleDeploymentComplete = () => {
-    setCurrentScreen('traffic')
+    // [Disabled] Skip page 2 (traffic) and go directly to success
+    setCurrentScreen('success')
   }
 
   const handleTrafficComplete = () => {
@@ -125,6 +141,41 @@ function App() {
         )}
       </button>
 
+      {/* Data Mode Toggle (Mock / Real) */}
+      <div className="fixed top-4 left-4 z-50 flex gap-2">
+        <button
+          onClick={() => {
+            websocket.useMockData()
+            setDataMode('mock')
+            setIsRealMode(false)
+            setMetricsLoading(false)
+          }}
+          className={`px-3 py-2 rounded-lg border transition-all duration-200 ${
+            dataMode === 'mock' ? 'bg-white/20 text-white border-white/30' : 'bg-black/30 text-white/80 border-white/10'
+          }`}
+          title="Switch to Mock data"
+        >
+          Mock
+        </button>
+        <button
+          onClick={() => {
+            websocket.useRealData()
+            setDataMode('real')
+            setIsRealMode(true)
+            setMetricsLoading(true)
+            // immediately request one fetch to reflect real data fast
+            websocket.getXRayGraph?.()
+            websocket.send?.('fetch_metrics')
+          }}
+          className={`px-3 py-2 rounded-lg border transition-all duration-200 ${
+            dataMode === 'real' ? 'bg-white/20 text-white border-white/30' : 'bg-black/30 text-white/80 border-white/10'
+          }`}
+          title="Switch to Real AWS data"
+        >
+          Real
+        </button>
+      </div>
+
       {/* Content Layer */}
       <div className="relative z-10 w-full h-full">
         {currentScreen === 'deployment' && (
@@ -133,7 +184,8 @@ function App() {
             xrayServices={xrayServices}
           />
         )}
-        {currentScreen === 'traffic' && (
+        {/* [Disabled] Page 2 (Traffic) */}
+        {false && currentScreen === 'traffic' && (
           <TrafficScreen onComplete={handleTrafficComplete} xrayServices={xrayServices} />
         )}
         {currentScreen === 'success' && (
