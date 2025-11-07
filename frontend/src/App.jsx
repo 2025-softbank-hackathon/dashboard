@@ -1,73 +1,129 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import useDeploymentStore from './store/useDeploymentStore'
 import websocket from './services/websocket'
 import DeploymentDashboard from './components/DeploymentDashboard'
 import TrafficScreen from './components/TrafficScreen'
 import SuccessScreen from './components/SuccessScreen'
+import { transformCloudWatchMetrics, transformXRayGraph } from './utils/dataTransforms'
 
 function App() {
-  const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog } = useDeploymentStore()
+  const {
+    setWsConnected,
+    updateBlueMetrics,
+    updateGreenMetrics,
+    addLog,
+  } = useDeploymentStore()
   const [currentScreen, setCurrentScreen] = useState('deployment') // 'deployment', 'traffic', 'success'
   const [xrayServices, setXrayServices] = useState([])
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const videoRef = useRef(null)
   const audioRef = useRef(null)
+  const [lastUpdated, setLastUpdated] = useState(null)
+
+  const handleCloudWatchMetrics = useCallback((payload) => {
+    const metrics = payload?.metrics ?? payload
+    const timestamp = payload?.timestamp ?? payload?.metrics?.timestamp
+
+    const transformed = transformCloudWatchMetrics(metrics)
+
+    if (transformed.blue) {
+      updateBlueMetrics(transformed.blue)
+
+      if (Number.isFinite(transformed.blue?.albErrors) && transformed.blue.albErrors > 0) {
+        addLog({
+          timestamp: new Date().toISOString(),
+          type: 'warning',
+          message: `[ALB][Blue] Detected ${transformed.blue.albErrors} HTTP 5xx responses in the latest window.`,
+        })
+      }
+    }
+
+    if (transformed.green) {
+      updateGreenMetrics(transformed.green)
+
+      if (Number.isFinite(transformed.green?.albErrors) && transformed.green.albErrors > 0) {
+        addLog({
+          timestamp: new Date().toISOString(),
+          type: 'warning',
+          message: `[ALB][Green] Detected ${transformed.green.albErrors} HTTP 5xx responses in the latest window.`,
+        })
+      }
+    }
+
+    const resolvedTimestamp = (() => {
+      if (!timestamp) return new Date().toISOString()
+      const parsed = new Date(timestamp)
+      return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString()
+    })()
+    setLastUpdated(resolvedTimestamp)
+  }, [addLog, updateBlueMetrics, updateGreenMetrics])
+
+  const handleXRayGraph = useCallback((graph) => {
+    const normalized = transformXRayGraph(graph?.data ?? graph)
+    setXrayServices(normalized)
+  }, [])
 
   useEffect(() => {
     // Connect to WebSocket server
-    websocket.connect('ws://localhost:8080')
+    const targetUrl = import.meta.env.VITE_WEBSOCKET_URL || undefined
+
+    websocket.connect(targetUrl)
       .then(() => {
         setWsConnected(true)
-        // Start monitoring
-        websocket.startMonitoring()
       })
       .catch((error) => {
         console.error('Failed to connect to WebSocket:', error)
         setWsConnected(false)
       })
 
-    // Listen to metrics
-    websocket.on('metrics', (data) => {
-      if (data.data.blue) {
-        updateBlueMetrics(data.data.blue)
-      }
-      if (data.data.green) {
-        updateGreenMetrics(data.data.green)
-      }
-    })
+    const metricsListener = handleCloudWatchMetrics
+    const xrayListener = handleXRayGraph
+    const timestampListener = (timestamp) => {
+      setLastUpdated(timestamp)
+    }
 
-    // Listen to logs
-    websocket.on('log', (data) => {
-      addLog(data.data)
-    })
+    const connectedListener = () => {
+      addLog({
+        timestamp: new Date().toISOString(),
+        type: 'success',
+        message: '[WS] Connected to real-time monitoring stream.',
+      })
+    }
 
-    // Listen to pipeline status
-    websocket.on('pipeline_status', (data) => {
-      console.log('Pipeline status:', data.data)
-    })
+    const disconnectedListener = () => {
+      addLog({
+        timestamp: new Date().toISOString(),
+        type: 'warning',
+        message: '[WS] Connection lost. Attempting to reconnect...',
+      })
+    }
 
-    // Listen to CodeBuild status
-    websocket.on('codebuild_status', (data) => {
-      console.log('CodeBuild status:', data.data)
-    })
+    const errorListener = (error) => {
+      addLog({
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        message: `[WS] WebSocket error: ${error?.message || 'Unknown error'}`,
+      })
+    }
 
-    // Listen to CodeDeploy status
-    websocket.on('codedeploy_status', (data) => {
-      console.log('CodeDeploy status:', data.data)
-    })
-
-    // Listen to X-Ray service map updates
-    websocket.on('xray_service_map', (data) => {
-      console.log('X-Ray service map:', data.data)
-      setXrayServices(data.data)
-    })
+    websocket.on('cloudwatch_metrics', metricsListener)
+    websocket.on('xray_service_graph', xrayListener)
+    websocket.on('timestamp', timestampListener)
+    websocket.on('connected', connectedListener)
+    websocket.on('disconnected', disconnectedListener)
+    websocket.on('error', errorListener)
 
     // Cleanup
     return () => {
-      websocket.stopMonitoring()
+      websocket.off('cloudwatch_metrics', metricsListener)
+      websocket.off('xray_service_graph', xrayListener)
+      websocket.off('timestamp', timestampListener)
+      websocket.off('connected', connectedListener)
+      websocket.off('disconnected', disconnectedListener)
+      websocket.off('error', errorListener)
       websocket.disconnect()
     }
-  }, [])
+  }, [addLog, handleCloudWatchMetrics, handleXRayGraph, setWsConnected])
 
   const handleDeploymentComplete = () => {
     setCurrentScreen('traffic')
@@ -131,6 +187,7 @@ function App() {
           <DeploymentDashboard
             onDeploymentComplete={handleDeploymentComplete}
             xrayServices={xrayServices}
+            lastUpdated={lastUpdated}
           />
         )}
         {currentScreen === 'traffic' && (

@@ -1,28 +1,81 @@
+const DEFAULT_REMOTE_ENDPOINT = 'wss://rysusu6e4a.execute-api.ap-northeast-2.amazonaws.com/dev'
+
 class WebSocketService {
   constructor() {
     this.ws = null
-    this.reconnectInterval = 3000
+    this.url = null
+    this.reconnectInterval = 5000
     this.listeners = new Map()
+    this.manualClose = false
   }
 
-  connect(url = 'ws://localhost:8080') {
+  getDefaultUrl() {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WEBSOCKET_URL) {
+      return import.meta.env.VITE_WEBSOCKET_URL
+    }
+    return DEFAULT_REMOTE_ENDPOINT
+  }
+
+  connect(url = this.getDefaultUrl()) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      return Promise.resolve(this.ws)
+    }
+
+    this.url = url
+    this.manualClose = false
+
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(url)
 
         this.ws.onopen = () => {
-          console.log('✅ WebSocket connected')
-          this.emit('connected', { timestamp: new Date().toISOString() })
+          console.log('✅ WebSocket connected:', url)
+          this.emit('connected', { timestamp: new Date().toISOString(), url })
           resolve(this.ws)
         }
 
         this.ws.onmessage = (event) => {
+          if (!event?.data) return
+
           try {
-            const data = JSON.parse(event.data)
-            console.log('📨 Received:', data.type, data)
-            this.emit(data.type, data)
+            const payload = JSON.parse(event.data)
+            this.emit('raw_message', payload)
+
+            if (payload.type) {
+              this.emit(payload.type, payload)
+            }
+
+            const messageType = payload.type || ''
+            const data = payload.data ?? payload.payload ?? null
+
+            const metricsPayload =
+              payload.cloudwatch_metrics ??
+              data?.cloudwatch_metrics ??
+              (messageType === 'metrics' ? data ?? payload.metrics ?? payload : null)
+
+            if (metricsPayload) {
+              this.emit('cloudwatch_metrics', {
+                metrics: metricsPayload,
+                timestamp: payload.timestamp ?? data?.timestamp,
+              })
+            }
+
+            const xrayPayload =
+              payload.xray_service_graph ??
+              data?.xray_service_graph ??
+              data?.services ??
+              (messageType.startsWith('xray') ? data : null)
+
+            if (xrayPayload) {
+              this.emit('xray_service_graph', { data: xrayPayload, timestamp: payload.timestamp ?? data?.timestamp })
+            }
+
+            if (payload.timestamp) {
+              this.emit('timestamp', payload.timestamp)
+            }
           } catch (error) {
-            console.error('Failed to parse message:', error)
+            console.error('Failed to parse WebSocket message:', error)
+            this.emit('parse_error', error)
           }
         }
 
@@ -34,13 +87,14 @@ class WebSocketService {
 
         this.ws.onclose = () => {
           console.log('🔌 WebSocket disconnected')
-          this.emit('disconnected', {})
+          this.emit('disconnected', { url })
 
-          // Auto reconnect
-          setTimeout(() => {
-            console.log('🔄 Attempting to reconnect...')
-            this.connect(url)
-          }, this.reconnectInterval)
+          if (!this.manualClose) {
+            setTimeout(() => {
+              console.log('🔄 Attempting to reconnect...')
+              this.connect(this.url)
+            }, this.reconnectInterval)
+          }
         }
       } catch (error) {
         console.error('Failed to create WebSocket:', error)
@@ -66,43 +120,46 @@ class WebSocketService {
   }
 
   off(event, callback) {
-    if (this.listeners.has(event)) {
-      const callbacks = this.listeners.get(event)
-      const index = callbacks.indexOf(callback)
-      if (index > -1) {
-        callbacks.splice(index, 1)
-      }
+    if (!this.listeners.has(event)) return
+
+    const callbacks = this.listeners.get(event)
+    const nextCallbacks = callbacks.filter((cb) => cb !== callback)
+
+    if (nextCallbacks.length > 0) {
+      this.listeners.set(event, nextCallbacks)
+    } else {
+      this.listeners.delete(event)
     }
   }
 
   emit(event, data) {
-    if (this.listeners.has(event)) {
-      this.listeners.get(event).forEach(callback => callback(data))
-    }
+    const callbacks = this.listeners.get(event)
+    if (!callbacks) return
+
+    callbacks.forEach((callback) => {
+      try {
+        callback(data)
+      } catch (error) {
+        console.error(`Error executing listener for ${event}:`, error)
+      }
+    })
   }
 
   disconnect() {
     if (this.ws) {
+      this.manualClose = true
       this.ws.close()
       this.ws = null
     }
   }
 
-  // Convenience methods
+  // Legacy helper methods retained for backwards compatibility
   startMonitoring() {
     this.send('start_monitoring')
   }
 
   stopMonitoring() {
     this.send('stop_monitoring')
-  }
-
-  runTerraformPlan() {
-    this.send('terraform_plan')
-  }
-
-  runTerraformApply() {
-    this.send('terraform_apply')
   }
 
   getXRayGraph() {

@@ -9,8 +9,9 @@ const WebSocket = require('ws');
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
-const fs = require('fs').promises;
-const path = require('path');
+const config = require('./config');
+
+const AWS_REGION = config.awsRegion;
 
 const PORT = 8080;
 
@@ -26,14 +27,32 @@ console.log(`[START] WebSocket Server started on ws://localhost:${PORT}`);
 /**
  * CloudWatch Metrics 가져오기
  */
-async function getCloudWatchMetrics(serviceName) {
+function extractAlbDimensionFromArn(arn) {
+    if (!arn) {
+        return null;
+    }
+
+    const parts = arn.split(':');
+    return parts[5] || null;
+}
+
+async function getCloudWatchMetrics({
+    serviceName,
+    clusterName = config.ecsClusterName,
+    targetGroupArn,
+    loadBalancerArn = config.alb.arn,
+}) {
+    if (!serviceName) {
+        return null;
+    }
+
     const now = new Date();
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
     const startTime = fiveMinutesAgo.toISOString();
     const endTime = now.toISOString();
 
-    const query = JSON.stringify([
+    const metricQueries = [
         {
             Id: 'cpu',
             MetricStat: {
@@ -42,10 +61,10 @@ async function getCloudWatchMetrics(serviceName) {
                     MetricName: 'CPUUtilization',
                     Dimensions: [
                         { Name: 'ServiceName', Value: serviceName },
-                        { Name: 'ClusterName', Value: 'softbank-demo-cluster' }
+                        { Name: 'ClusterName', Value: clusterName }
                     ]
                 },
-                Period: 60,
+                Period: config.cloudWatch.metricPeriodSeconds,
                 Stat: 'Average'
             }
         },
@@ -57,14 +76,69 @@ async function getCloudWatchMetrics(serviceName) {
                     MetricName: 'MemoryUtilization',
                     Dimensions: [
                         { Name: 'ServiceName', Value: serviceName },
-                        { Name: 'ClusterName', Value: 'softbank-demo-cluster' }
+                        { Name: 'ClusterName', Value: clusterName }
                     ]
                 },
-                Period: 60,
+                Period: config.cloudWatch.metricPeriodSeconds,
                 Stat: 'Average'
             }
         }
-    ]);
+    ];
+
+    const targetGroupDimension = extractAlbDimensionFromArn(targetGroupArn);
+    const loadBalancerDimension = extractAlbDimensionFromArn(loadBalancerArn);
+
+    if (targetGroupDimension && loadBalancerDimension) {
+        metricQueries.push(
+            {
+                Id: 'albRequests',
+                MetricStat: {
+                    Metric: {
+                        Namespace: 'AWS/ApplicationELB',
+                        MetricName: 'RequestCount',
+                        Dimensions: [
+                            { Name: 'TargetGroup', Value: targetGroupDimension },
+                            { Name: 'LoadBalancer', Value: loadBalancerDimension }
+                        ]
+                    },
+                    Period: config.cloudWatch.metricPeriodSeconds,
+                    Stat: 'Sum'
+                }
+            },
+            {
+                Id: 'albErrors',
+                MetricStat: {
+                    Metric: {
+                        Namespace: 'AWS/ApplicationELB',
+                        MetricName: 'HTTPCode_Target_5XX_Count',
+                        Dimensions: [
+                            { Name: 'TargetGroup', Value: targetGroupDimension },
+                            { Name: 'LoadBalancer', Value: loadBalancerDimension }
+                        ]
+                    },
+                    Period: config.cloudWatch.metricPeriodSeconds,
+                    Stat: 'Sum'
+                }
+            },
+            {
+                Id: 'albLatency',
+                MetricStat: {
+                    Metric: {
+                        Namespace: 'AWS/ApplicationELB',
+                        MetricName: 'TargetResponseTime',
+                        Dimensions: [
+                            { Name: 'TargetGroup', Value: targetGroupDimension },
+                            { Name: 'LoadBalancer', Value: loadBalancerDimension }
+                        ]
+                    },
+                    Period: config.cloudWatch.metricPeriodSeconds,
+                    Stat: 'Average'
+                }
+            }
+        );
+    }
+
+    const query = JSON.stringify(metricQueries);
 
     try {
         const { stdout } = await execPromise(
@@ -72,19 +146,39 @@ async function getCloudWatchMetrics(serviceName) {
                 --metric-data-queries '${query}' \
                 --start-time "${startTime}" \
                 --end-time "${endTime}" \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
         const data = JSON.parse(stdout);
 
-        // Extract latest values
+        const getLatestValue = (metric) => {
+            if (!metric?.Values || metric.Values.length === 0) {
+                return null;
+            }
+            return metric.Values[metric.Values.length - 1];
+        };
+
         const cpuData = data.MetricDataResults.find(m => m.Id === 'cpu');
         const memoryData = data.MetricDataResults.find(m => m.Id === 'memory');
+        const albRequestsData = data.MetricDataResults.find(m => m.Id === 'albRequests');
+        const albErrorsData = data.MetricDataResults.find(m => m.Id === 'albErrors');
+        const albLatencyData = data.MetricDataResults.find(m => m.Id === 'albLatency');
+
+        const albRequests = getLatestValue(albRequestsData);
+        const albErrors = getLatestValue(albErrorsData);
+        const latencySeconds = getLatestValue(albLatencyData);
 
         return {
-            cpu: cpuData?.Values[cpuData.Values.length - 1] || null,
-            memory: memoryData?.Values[memoryData.Values.length - 1] || null,
+            cpu: getLatestValue(cpuData),
+            memory: getLatestValue(memoryData),
+            albRequests,
+            albErrors,
+            responseTime: typeof latencySeconds === 'number' ? latencySeconds * 1000 : null,
+            errorRate:
+                typeof albRequests === 'number' && albRequests > 0 && typeof albErrors === 'number'
+                    ? albErrors / albRequests
+                    : null,
             timestamp: now.toISOString()
         };
     } catch (error) {
@@ -96,7 +190,7 @@ async function getCloudWatchMetrics(serviceName) {
 /**
  * CloudWatch Logs 가져오기
  */
-async function getCloudWatchLogs(logGroupName, limit = 20) {
+async function getCloudWatchLogs(logGroupName = config.cloudWatch.logGroupName, limit = 20) {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
 
     try {
@@ -105,7 +199,7 @@ async function getCloudWatchLogs(logGroupName, limit = 20) {
                 --log-group-name "${logGroupName}" \
                 --start-time ${fiveMinutesAgo} \
                 --limit ${limit} \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -136,7 +230,7 @@ async function getXRayServiceGraph() {
             `aws xray get-service-graph \
                 --start-time ${startTime} \
                 --end-time ${endTime} \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -168,46 +262,6 @@ async function getXRayServiceGraph() {
 }
 
 /**
- * X-Ray 서비스 맵을 아키텍처에 맞게 매핑
- */
-function mapXRayToArchitecture(xrayServices) {
-    if (!xrayServices || xrayServices.length === 0) {
-        return null;
-    }
-
-    // X-Ray 서비스 이름을 아키텍처 컴포넌트로 매핑
-    const serviceMap = {
-        'demo-alb': { name: 'ALB', position: [0, 3, 5] },
-        'demo-blue-ecs-az1': { name: 'Blue-AZ1', position: [-4, 2, 2] },
-        'demo-blue-ecs-az2': { name: 'Blue-AZ2', position: [-4, 2, -2] },
-        'demo-green-ecs-az1': { name: 'Green-AZ1', position: [4, 2, 2] },
-        'demo-green-ecs-az2': { name: 'Green-AZ2', position: [4, 2, -2] },
-        'dynamodb': { name: 'DynamoDB', position: [0, 1, -4] },
-        'elasticache-redis-az1': { name: 'Redis-AZ1', position: [-2, 0.5, 0] },
-        'elasticache-redis-az2': { name: 'Redis-AZ2', position: [2, 0.5, 0] }
-    };
-
-    return xrayServices
-        .map(service => {
-            // X-Ray 서비스 이름에서 매핑 찾기
-            const mappedService = Object.entries(serviceMap).find(([key]) =>
-                service.name.toLowerCase().includes(key.toLowerCase())
-            );
-
-            if (mappedService) {
-                return {
-                    ...mappedService[1],
-                    responseTime: service.responseTime,
-                    errorRate: service.errorRate,
-                    requestCount: service.requestCount
-                };
-            }
-            return null;
-        })
-        .filter(Boolean);
-}
-
-/**
  * X-Ray Trace Summaries 가져오기
  */
 async function getXRayTraceSummaries() {
@@ -222,7 +276,7 @@ async function getXRayTraceSummaries() {
             `aws xray get-trace-summaries \
                 --start-time ${startTime} \
                 --end-time ${endTime} \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -237,12 +291,12 @@ async function getXRayTraceSummaries() {
 /**
  * CodePipeline 실행 상태 가져오기
  */
-async function getCodePipelineStatus(pipelineName = 'softbank-demo-pipeline') {
+async function getCodePipelineStatus(pipelineName = config.codePipelineName) {
     try {
         const { stdout } = await execPromise(
             `aws codepipeline get-pipeline-state \
                 --name ${pipelineName} \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -261,17 +315,17 @@ async function getCodePipelineStatus(pipelineName = 'softbank-demo-pipeline') {
 /**
  * CodeBuild 빌드 상태 가져오기
  */
-async function getCodeBuildStatus(projectName = 'softbank-demo-build') {
+async function getCodeBuildStatus(projectName = config.codeBuildProjectName) {
     try {
         const { stdout } = await execPromise(
             `aws codebuild batch-get-builds \
                 --ids $(aws codebuild list-builds-for-project \
                     --project-name ${projectName} \
                     --max-items 1 \
-                    --region ap-northeast-1 \
+                    --region ${AWS_REGION} \
                     --query 'ids[0]' \
                     --output text) \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -296,7 +350,10 @@ async function getCodeBuildStatus(projectName = 'softbank-demo-build') {
 /**
  * CodeDeploy 배포 상태 가져오기
  */
-async function getCodeDeployStatus(deploymentGroupName = 'softbank-demo-dg', applicationName = 'softbank-demo-app') {
+async function getCodeDeployStatus(
+    deploymentGroupName = config.codeDeploy.deploymentGroupName,
+    applicationName = config.codeDeploy.applicationName
+) {
     try {
         // Get latest deployment
         const { stdout: listStdout } = await execPromise(
@@ -304,7 +361,7 @@ async function getCodeDeployStatus(deploymentGroupName = 'softbank-demo-dg', app
                 --application-name ${applicationName} \
                 --deployment-group-name ${deploymentGroupName} \
                 --max-items 1 \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -317,7 +374,7 @@ async function getCodeDeployStatus(deploymentGroupName = 'softbank-demo-dg', app
         const { stdout: detailStdout } = await execPromise(
             `aws deploy get-deployment \
                 --deployment-id ${deploymentId} \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -341,12 +398,12 @@ async function getCodeDeployStatus(deploymentGroupName = 'softbank-demo-dg', app
 /**
  * ALB Target Group 헬스 상태 가져오기
  */
-async function getALBTargetHealth(targetGroupArn) {
+async function getALBTargetHealth(targetGroupArn = config.alb.targetGroups.blue) {
     try {
         const { stdout } = await execPromise(
             `aws elbv2 describe-target-health \
                 --target-group-arn ${targetGroupArn} \
-                --region ap-northeast-1 \
+                --region ${AWS_REGION} \
                 --output json`
         );
 
@@ -401,7 +458,7 @@ wss.on('connection', (ws) => {
     console.log('[SUCCESS] Client connected');
 
     let intervalId = null;
-    let useMockData = true; // AWS 데이터가 없을 때 Mock 데이터 사용
+    let useMockData = false; // 기본적으로 실데이터 사용, 필요 시 mock으로 전환
 
     // 클라이언트로부터 메시지 수신
     ws.on('message', async (message) => {
@@ -421,9 +478,23 @@ wss.on('connection', (ws) => {
                         greenMetrics = generateMockMetrics('green');
                     } else {
                         // 실제 AWS CloudWatch 데이터
-                        blueMetrics = await getCloudWatchMetrics('demo-blue-service');
-                        greenMetrics = await getCloudWatchMetrics('demo-green-service');
+                        if (config.ecsServiceNames.blue) {
+                            blueMetrics = await getCloudWatchMetrics({
+                                serviceName: config.ecsServiceNames.blue,
+                                targetGroupArn: config.alb.targetGroups.blue,
+                            });
+                        }
+
+                        if (config.ecsServiceNames.green) {
+                            greenMetrics = await getCloudWatchMetrics({
+                                serviceName: config.ecsServiceNames.green,
+                                targetGroupArn: config.alb.targetGroups.green,
+                            });
+                        }
                     }
+
+                    blueMetrics = blueMetrics ?? null;
+                    greenMetrics = greenMetrics ?? null;
 
                     ws.send(JSON.stringify({
                         type: 'metrics',
@@ -446,12 +517,11 @@ wss.on('connection', (ws) => {
                 const xrayInterval = setInterval(async () => {
                     if (!useMockData) {
                         const xrayServices = await getXRayServiceGraph();
-                        const mappedServices = mapXRayToArchitecture(xrayServices);
 
-                        if (mappedServices) {
+                        if (xrayServices) {
                             ws.send(JSON.stringify({
-                                type: 'xray_service_map',
-                                data: mappedServices
+                                type: 'xray_service_graph',
+                                data: xrayServices
                             }));
                         }
                     }
@@ -518,7 +588,7 @@ wss.on('connection', (ws) => {
             case 'get_logs':
                 const logs = useMockData
                     ? [generateMockLogs(), generateMockLogs(), generateMockLogs()]
-                    : await getCloudWatchLogs('/ecs/softbank-demo');
+                    : await getCloudWatchLogs(config.cloudWatch.logGroupName);
                 ws.send(JSON.stringify({
                     type: 'logs',
                     data: logs

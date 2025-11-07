@@ -1,171 +1,217 @@
 import { motion } from 'framer-motion'
 
-export default function XRayServiceMap2D({ services = [], showGreen = true }) {
-  // Clean circular layout matching the reference image - spread out widely
-  const architecture = {
-    // Left - Client
-    user: { x: 100, y: 300, label: 'Clients', color: 'bg-gray-500', ringColor: 'border-gray-400', icon: '👥' },
-
-    // Central node - Main service (Scorekeep)
-    alb: { x: 350, y: 300, label: 'Scorekeep', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::ElasticBeanstalk::Environment' },
-
-    // Top row - spread out
-    dynamoServices: [
-      { x: 550, y: 100, label: 'scorekeep-user', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' },
-      { x: 900, y: 100, label: 'SNS', color: 'bg-red-500', ringColor: 'border-red-400', subtitle: 'AWS::SNS' }
-    ],
-
-    // Right middle
-    environments: [
-      { x: 700, y: 300, label: 'scorekeep-move', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' },
-      { x: 1050, y: 300, label: 'scorekeep-game', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' }
-    ],
-
-    // Bottom row - spread out
-    backendServices: [
-      { x: 550, y: 500, label: 'scorekeep-state', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' },
-      { x: 900, y: 500, label: 'scorekeep-session', color: 'bg-green-500', ringColor: 'border-green-400', subtitle: 'AWS::DynamoDB::Table' }
-    ]
-  }
-
-  // Connection lines - radial from center
-  const connections = [
-    // User to ALB
-    { from: architecture.user, to: architecture.alb, color: 'stroke-gray-400' },
-
-    // ALB to top services
-    ...architecture.dynamoServices.map(service => ({
-      from: architecture.alb,
-      to: service,
-      color: 'stroke-gray-400'
-    })),
-
-    // ALB to environments
-    ...architecture.environments.map(env => ({
-      from: architecture.alb,
-      to: env,
-      color: 'stroke-gray-400'
-    })),
-
-    // ALB to backend services
-    ...architecture.backendServices.map(service => ({
-      from: architecture.alb,
-      to: service,
-      color: 'stroke-gray-400'
-    }))
-  ]
-
-  return (
-    <div className="w-full h-full relative bg-black/10 rounded-xl overflow-hidden flex items-center justify-center">
-      {/* SVG for connection lines */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }} viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          {/* Animated gradient for lines */}
-          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(99, 102, 241, 0.3)" />
-            <stop offset="50%" stopColor="rgba(99, 102, 241, 0.6)" />
-            <stop offset="100%" stopColor="rgba(99, 102, 241, 0.3)" />
-          </linearGradient>
-        </defs>
-
-        {connections.map((conn, i) => (
-          <motion.line
-            key={i}
-            x1={conn.from.x}
-            y1={conn.from.y}
-            x2={conn.to.x}
-            y2={conn.to.y}
-            className={conn.color}
-            strokeWidth="2"
-            strokeDasharray="5,5"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 0.3 }}
-            transition={{ duration: 1, delay: i * 0.1 }}
-          />
-        ))}
-      </svg>
-
-      {/* Nodes Container with proper scaling */}
-      <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 2 }}>
-        <div className="relative" style={{ width: '1200px', height: '600px', transform: 'scale(0.85)' }}>
-          {/* User/Client */}
-          <CircularNode node={architecture.user} delay={0} />
-
-          {/* Central ALB */}
-          <CircularNode node={architecture.alb} delay={0.1} />
-
-          {/* Top DynamoDB Services */}
-          {architecture.dynamoServices.map((node, i) => (
-            <CircularNode key={`dynamo-${i}`} node={node} delay={0.2 + i * 0.1} />
-          ))}
-
-          {/* Environments */}
-          {architecture.environments.map((node, i) => (
-            <CircularNode key={`env-${i}`} node={node} delay={0.4 + i * 0.1} />
-          ))}
-
-          {/* Backend Services */}
-          {architecture.backendServices.map((node, i) => (
-            <CircularNode key={`backend-${i}`} node={node} delay={0.6 + i * 0.1} />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
+const NODE_COLORS = {
+  api: { base: 'bg-indigo-500', ring: 'border-indigo-300' },
+  gateway: { base: 'bg-indigo-500', ring: 'border-indigo-300' },
+  awsproxy: { base: 'bg-sky-500', ring: 'border-sky-300' },
+  lambda: { base: 'bg-purple-500', ring: 'border-purple-300' },
+  service: { base: 'bg-blue-500', ring: 'border-blue-300' },
+  database: { base: 'bg-emerald-500', ring: 'border-emerald-300' },
+  dynamodb: { base: 'bg-emerald-500', ring: 'border-emerald-300' },
+  sqs: { base: 'bg-amber-500', ring: 'border-amber-300' },
+  sns: { base: 'bg-pink-500', ring: 'border-pink-300' },
+  default: { base: 'bg-gray-500', ring: 'border-gray-300' },
 }
 
-function CircularNode({ node, delay }) {
-  // Generate realistic metrics
-  const avgTime = Math.floor(Math.random() * 500) + 50
-  const throughput = (Math.random() * 10).toFixed(1)
+const CANVAS = {
+  width: 1200,
+  height: 600,
+  radius: 260,
+}
+
+function normalizeType(type) {
+  if (!type) return 'default'
+  const lower = type.toLowerCase()
+  if (lower.includes('api') || lower.includes('gateway')) return 'api'
+  if (lower.includes('lambda')) return 'lambda'
+  if (lower.includes('dynamo') || lower.includes('database')) return 'database'
+  if (lower.includes('sns')) return 'sns'
+  if (lower.includes('sqs')) return 'sqs'
+  if (lower.includes('proxy')) return 'awsproxy'
+  return lower in NODE_COLORS ? lower : 'service'
+}
+
+function buildGraphLayout(services) {
+  if (!services.length) {
+    return { nodes: [], edges: [] }
+  }
+
+  const center = { x: CANVAS.width / 2, y: CANVAS.height / 2 }
+  const incomingCounts = new Map()
+
+  services.forEach((service) => {
+    service.edges?.forEach((edge) => {
+      const target = edge?.targetId
+      if (!target) return
+      incomingCounts.set(target, (incomingCounts.get(target) || 0) + 1)
+    })
+  })
+
+  let root = services[0]
+  for (const service of services) {
+    const incoming = incomingCounts.get(service.id) || 0
+    if (incoming === 0) {
+      root = service
+      break
+    }
+  }
+
+  const otherServices = services.filter((service) => service.id !== root.id)
+  const nodes = []
+
+  const rootNode = {
+    ...root,
+    position: center,
+    color: NODE_COLORS[normalizeType(root.type)] || NODE_COLORS.default,
+  }
+  nodes.push(rootNode)
+
+  otherServices.forEach((service, index) => {
+    const angle = (2 * Math.PI * index) / Math.max(otherServices.length, 1)
+    const dynamicRadius = CANVAS.radius + (service.type?.toLowerCase().includes('database') ? 80 : 0)
+    const node = {
+      ...service,
+      position: {
+        x: center.x + Math.cos(angle) * dynamicRadius,
+        y: center.y + Math.sin(angle) * dynamicRadius,
+      },
+      color: NODE_COLORS[normalizeType(service.type)] || NODE_COLORS.default,
+    }
+    nodes.push(node)
+  })
+
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]))
+  const edges = []
+
+  services.forEach((service) => {
+    const from = nodeMap.get(service.id)
+    if (!from) return
+
+    service.edges?.forEach((edge) => {
+      if (!edge?.targetId) return
+      const to = nodeMap.get(edge.targetId)
+      if (!to) return
+
+      edges.push({
+        from: from.position,
+        to: to.position,
+        metrics: {
+          averageResponseTimeMs: edge.averageResponseTimeMs,
+          requestCount: edge.requestCount,
+          errorCount: edge.errorCount,
+        },
+      })
+    })
+  })
+
+  return { nodes, edges }
+}
+
+function formatStat(value, suffix = '', fallback = 'n/a') {
+  if (!Number.isFinite(value)) {
+    return fallback
+  }
+  if (suffix === 'ms') {
+    return `${Math.round(value)} ms`
+  }
+  if (suffix === 'req') {
+    return `${value.toLocaleString()} req`
+  }
+  if (suffix === 'err') {
+    return `${value.toLocaleString()} errors`
+  }
+  return `${value.toLocaleString()}${suffix}`
+}
+
+function ServiceNode({ node, delay }) {
+  const { position, color } = node
+  const stats = [
+    { label: 'Latency', value: formatStat(node.averageResponseTimeMs, 'ms') },
+    { label: 'Requests', value: formatStat(node.requestCount, 'req') },
+    { label: 'Errors', value: formatStat(node.errorCount, 'err') },
+  ]
 
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.6, delay, type: 'spring', stiffness: 100 }}
+      transition={{ duration: 0.6, delay, type: 'spring', stiffness: 120 }}
       className="absolute"
       style={{
-        left: node.x - 100,
-        top: node.y - 100,
-        width: '200px',
-        height: '200px'
+        left: position.x - 110,
+        top: position.y - 110,
+        width: 220,
+        height: 220,
       }}
     >
-      {/* Outer ring with metrics */}
-      <div className={`w-full h-full rounded-full border-5 ${node.ringColor} bg-white/5 flex items-center justify-center relative shadow-xl cursor-pointer hover:scale-105 transition-transform`}>
-        {/* Inner circle */}
-        <div className={`w-40 h-40 rounded-full ${node.color} flex items-center justify-center shadow-lg`}>
-          <div className="text-center">
-            <div className="text-white text-base font-bold">avg {avgTime}ms</div>
-            <div className="text-white text-sm opacity-80">{throughput} t/min</div>
+      <div className={`w-full h-full rounded-full border-4 ${color.ring} bg-black/50 flex flex-col items-center justify-center shadow-xl`}
+        >
+        <div className={`w-40 h-40 rounded-full ${color.base} flex flex-col items-center justify-center text-center px-3`}
+          >
+          <div className="text-white text-base font-semibold leading-tight mb-1">
+            {node.name}
+          </div>
+          <div className="text-white/70 text-xs uppercase tracking-wider">
+            {node.type || 'service'}
           </div>
         </div>
-      </div>
-
-      {/* Label below */}
-      <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-        <div className="text-white text-base font-semibold text-center drop-shadow-lg">
-          {node.label}
-        </div>
-        <div className="text-white/60 text-sm text-center">
-          {node.subtitle || `AWS::${node.label.includes('Table') ? 'DynamoDB' : node.label.includes('SNS') ? 'SNS' : 'Service'}`}
+        <div className="mt-3 space-y-1 text-center">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-xs text-white/70">
+              <span className="font-semibold text-white/90 mr-1">{stat.label}:</span>
+              {stat.value}
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Pulse animation */}
-      <motion.div
-        className={`absolute inset-0 rounded-full border-4 ${node.ringColor} opacity-40`}
-        animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.4, 0, 0.4]
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: 'easeOut'
-        }}
-      />
     </motion.div>
+  )
+}
+
+export default function XRayServiceMap2D({ services = [] }) {
+  const { nodes, edges } = buildGraphLayout(services)
+
+  if (!nodes.length) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-black/20 rounded-xl border border-white/10">
+        <div className="text-white/60 text-sm">Waiting for AWS X-Ray service map data...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full h-full relative bg-black/10 rounded-xl overflow-hidden flex items-center justify-center">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${CANVAS.width} ${CANVAS.height}`} preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="edgeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(59, 130, 246, 0.15)" />
+            <stop offset="50%" stopColor="rgba(59, 130, 246, 0.6)" />
+            <stop offset="100%" stopColor="rgba(59, 130, 246, 0.15)" />
+          </linearGradient>
+        </defs>
+
+        {edges.map((edge, index) => (
+          <motion.line
+            key={`${edge.from.x}-${edge.to.x}-${index}`}
+            x1={edge.from.x}
+            y1={edge.from.y}
+            x2={edge.to.x}
+            y2={edge.to.y}
+            stroke="url(#edgeGradient)"
+            strokeWidth="3"
+            strokeDasharray="6,6"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.45 }}
+            transition={{ duration: 1.2, delay: index * 0.05 }}
+          />
+        ))}
+      </svg>
+
+      <div className="absolute inset-0" style={{ width: CANVAS.width, height: CANVAS.height }}>
+        {nodes.map((node, index) => (
+          <ServiceNode key={node.id || index} node={node} delay={0.1 + index * 0.05} />
+        ))}
+      </div>
+    </div>
   )
 }

@@ -144,7 +144,7 @@ export default function TrafficScreen({ onComplete, xrayServices }) {
           </div>
 
           <div className="h-[calc(100%-4rem)] rounded-xl overflow-hidden">
-            <XRayServiceMap2D showGreen={true} services={xrayServices} />
+            <XRayServiceMap2D services={xrayServices} />
           </div>
         </div>
 

@@ -15,6 +15,7 @@ build/
 
 # AWS
 *.json
+!frontend/package.json
 demo.tfplan
 
 # IDE
