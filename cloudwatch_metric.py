@@ -3,6 +3,12 @@ import boto3
 from datetime import datetime, timedelta
 import os
 
+DDB_TABLE_NAME      = os.environ.get("DDB_TABLE_NAME")
+BLUE_TARGET_GROUP   = os.environ.get("BLUE_TARGET_GROUP")
+GREEN_TARGET_GROUP  = os.environ.get("GREEN_TARGET_GROUP")
+ALB_ARN_SUFFIX      = os.environ.get("ALB_ARN_SUFFIX")
+API_GW_ENDPOINT_URL = os.environ.get("API_GW_ENDPOINT_URL")
+
 dynamodb = boto3.resource("dynamodb")
 cloudwatch = boto3.client("cloudwatch")
 apigateway_management = None
@@ -24,7 +30,7 @@ def handle_connect(connection_id: str):
 
 def handle_disconnect(connection_id: str):
     table = dynamodb.Table(DDB_TABLE_NAME)
-    table.delete_item(Key={"pk": connection_id})
+    table.delete_item(Key={"pk": connection_id, "connectionId": connection_id})
     print(f"Connection disconnected: {connection_id}")
     return {"statusCode": 200, "body": "Disconnected."}
 
