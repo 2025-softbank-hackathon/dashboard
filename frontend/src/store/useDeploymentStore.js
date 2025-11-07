@@ -11,10 +11,12 @@ const useDeploymentStore = create((set) => ({
 
   // Environment metrics
   blueMetrics: {
-    cpu: 45,
-    memory: 62,
-    responseTime: 245,
-    errorRate: 0.1,
+    cpu: 0,
+    memory: 0,
+    responseTime: 0,
+    errorRate: 0,
+    albRequests: 0,
+    albErrors: 0,
     traffic: 100
   },
   greenMetrics: {
@@ -22,6 +24,8 @@ const useDeploymentStore = create((set) => ({
     memory: 0,
     responseTime: 0,
     errorRate: 0,
+    albRequests: 0,
+    albErrors: 0,
     traffic: 0
   },
 
@@ -44,11 +48,21 @@ const useDeploymentStore = create((set) => ({
   setElapsedTime: (time) => set({ elapsedTime: time }),
 
   updateBlueMetrics: (metrics) => set((state) => ({
-    blueMetrics: { ...state.blueMetrics, ...metrics }
+    blueMetrics: {
+      ...state.blueMetrics,
+      ...Object.fromEntries(
+        Object.entries(metrics).filter(([, value]) => value !== undefined && value !== null)
+      )
+    }
   })),
 
   updateGreenMetrics: (metrics) => set((state) => ({
-    greenMetrics: { ...state.greenMetrics, ...metrics }
+    greenMetrics: {
+      ...state.greenMetrics,
+      ...Object.fromEntries(
+        Object.entries(metrics).filter(([, value]) => value !== undefined && value !== null)
+      )
+    }
   })),
 
   addTerraformResource: (resource) => set((state) => ({

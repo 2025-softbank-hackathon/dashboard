@@ -23,6 +23,13 @@ ChartJS.register(
   Filler
 )
 
+function formatNumber(value, options = {}) {
+  if (!Number.isFinite(value)) {
+    return '--'
+  }
+  return value.toLocaleString(undefined, options)
+}
+
 function MetricCard({ title, value, unit, trend, label, color = 'blue' }) {
   const colorClasses = {
     blue: 'from-blue-500 to-blue-700',
@@ -50,7 +57,7 @@ function MetricCard({ title, value, unit, trend, label, color = 'blue' }) {
       </div>
       <div className="text-white/70 text-sm mb-1">{title}</div>
       <div className="text-white text-3xl font-bold">
-        {value}
+        {Number.isFinite(value) ? value : '--'}
         <span className="text-xl ml-1">{unit}</span>
       </div>
     </motion.div>
@@ -158,7 +165,7 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
           <div className="grid grid-cols-2 gap-4">
             <MetricCard
               title="CPU Usage"
-              value={blueMetrics.cpu?.toFixed(0) || '--'}
+              value={Number.isFinite(blueMetrics.cpu) ? parseFloat(blueMetrics.cpu.toFixed(1)) : undefined}
               unit="%"
               trend={Math.random() > 0.5 ? 2 : -2}
               label="CPU"
@@ -166,7 +173,7 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
             />
             <MetricCard
               title="Memory"
-              value={blueMetrics.memory?.toFixed(0) || '--'}
+              value={Number.isFinite(blueMetrics.memory) ? parseFloat(blueMetrics.memory.toFixed(1)) : undefined}
               unit="%"
               trend={Math.random() > 0.5 ? 1 : -1}
               label="MEM"
@@ -174,7 +181,7 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
             />
             <MetricCard
               title="Response Time"
-              value={Math.round(blueMetrics.responseTime) || '--'}
+              value={Number.isFinite(blueMetrics.responseTime) ? Math.round(blueMetrics.responseTime) : undefined}
               unit="ms"
               trend={Math.random() > 0.5 ? 5 : -3}
               label="RT"
@@ -182,12 +189,26 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
             />
             <MetricCard
               title="Error Rate"
-              value={(blueMetrics.errorRate * 100)?.toFixed(1) || '--'}
+              value={Number.isFinite(blueMetrics.errorRate) ? parseFloat((blueMetrics.errorRate * 100).toFixed(2)) : undefined}
               unit="%"
               trend={Math.random() > 0.5 ? 0.5 : -0.3}
               label="ERR"
               color="red"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-black/40 rounded-lg p-4 border border-blue-400/20">
+              <div className="text-white/60 text-xs">ALB Requests</div>
+              <div className="text-white text-xl font-semibold">
+                {formatNumber(blueMetrics.albRequests)}
+              </div>
+            </div>
+            <div className="bg-black/40 rounded-lg p-4 border border-red-400/20">
+              <div className="text-white/60 text-xs">5xx Errors</div>
+              <div className="text-white text-xl font-semibold">
+                {formatNumber(blueMetrics.albErrors)}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -199,7 +220,7 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
           <div className="grid grid-cols-2 gap-4">
             <MetricCard
               title="CPU Usage"
-              value={greenMetrics.cpu?.toFixed(0) || '--'}
+              value={Number.isFinite(greenMetrics.cpu) ? parseFloat(greenMetrics.cpu.toFixed(1)) : undefined}
               unit="%"
               trend={Math.random() > 0.5 ? 2 : -2}
               label="CPU"
@@ -207,7 +228,7 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
             />
             <MetricCard
               title="Memory"
-              value={greenMetrics.memory?.toFixed(0) || '--'}
+              value={Number.isFinite(greenMetrics.memory) ? parseFloat(greenMetrics.memory.toFixed(1)) : undefined}
               unit="%"
               trend={Math.random() > 0.5 ? 1 : -1}
               label="MEM"
@@ -215,7 +236,7 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
             />
             <MetricCard
               title="Response Time"
-              value={Math.round(greenMetrics.responseTime) || '--'}
+              value={Number.isFinite(greenMetrics.responseTime) ? Math.round(greenMetrics.responseTime) : undefined}
               unit="ms"
               trend={Math.random() > 0.5 ? 3 : -5}
               label="RT"
@@ -223,12 +244,26 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
             />
             <MetricCard
               title="Error Rate"
-              value={(greenMetrics.errorRate * 100)?.toFixed(1) || '--'}
+              value={Number.isFinite(greenMetrics.errorRate) ? parseFloat((greenMetrics.errorRate * 100).toFixed(2)) : undefined}
               unit="%"
               trend={Math.random() > 0.5 ? 0.2 : -0.6}
               label="ERR"
               color="red"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-black/40 rounded-lg p-4 border border-green-400/20">
+              <div className="text-white/60 text-xs">ALB Requests</div>
+              <div className="text-white text-xl font-semibold">
+                {formatNumber(greenMetrics.albRequests)}
+              </div>
+            </div>
+            <div className="bg-black/40 rounded-lg p-4 border border-red-400/20">
+              <div className="text-white/60 text-xs">5xx Errors</div>
+              <div className="text-white text-xl font-semibold">
+                {formatNumber(greenMetrics.albErrors)}
+              </div>
+            </div>
           </div>
         </div>
       </div>

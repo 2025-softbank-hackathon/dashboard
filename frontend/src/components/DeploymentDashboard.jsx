@@ -6,7 +6,7 @@ import CloudWatchMetrics from './CloudWatchMetrics'
 import LogStream from './LogStream'
 import PochitaStatic from './PochitaStatic'
 
-export default function DeploymentDashboard({ onDeploymentComplete, xrayServices }) {
+export default function DeploymentDashboard({ onDeploymentComplete, xrayServices, lastUpdated }) {
   const {
     blueMetrics,
     greenMetrics,
@@ -25,9 +25,9 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
 
   // Metrics history for charts
   const [blueHistory, setBlueHistory] = useState({
-    cpu: Array(30).fill(45),
-    memory: Array(30).fill(62),
-    responseTime: Array(30).fill(245)
+    cpu: Array(30).fill(0),
+    memory: Array(30).fill(0),
+    responseTime: Array(30).fill(0)
   })
   const [greenHistory, setGreenHistory] = useState({
     cpu: Array(30).fill(0),
@@ -38,18 +38,30 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
   // Update metrics history
   useEffect(() => {
     const interval = setInterval(() => {
-      setBlueHistory(prev => ({
-        cpu: [...prev.cpu.slice(1), blueMetrics.cpu],
-        memory: [...prev.memory.slice(1), blueMetrics.memory],
-        responseTime: [...prev.responseTime.slice(1), blueMetrics.responseTime]
-      }))
+      setBlueHistory(prev => {
+        const fallbackCpu = Number.isFinite(blueMetrics.cpu) ? blueMetrics.cpu : prev.cpu[prev.cpu.length - 1] || 0
+        const fallbackMemory = Number.isFinite(blueMetrics.memory) ? blueMetrics.memory : prev.memory[prev.memory.length - 1] || 0
+        const fallbackResponse = Number.isFinite(blueMetrics.responseTime) ? blueMetrics.responseTime : prev.responseTime[prev.responseTime.length - 1] || 0
+
+        return {
+          cpu: [...prev.cpu.slice(1), fallbackCpu],
+          memory: [...prev.memory.slice(1), fallbackMemory],
+          responseTime: [...prev.responseTime.slice(1), fallbackResponse]
+        }
+      })
 
       if (deploymentStarted) {
-        setGreenHistory(prev => ({
-          cpu: [...prev.cpu.slice(1), greenMetrics.cpu],
-          memory: [...prev.memory.slice(1), greenMetrics.memory],
-          responseTime: [...prev.responseTime.slice(1), greenMetrics.responseTime]
-        }))
+        setGreenHistory(prev => {
+          const fallbackCpu = Number.isFinite(greenMetrics.cpu) ? greenMetrics.cpu : prev.cpu[prev.cpu.length - 1] || 0
+          const fallbackMemory = Number.isFinite(greenMetrics.memory) ? greenMetrics.memory : prev.memory[prev.memory.length - 1] || 0
+          const fallbackResponse = Number.isFinite(greenMetrics.responseTime) ? greenMetrics.responseTime : prev.responseTime[prev.responseTime.length - 1] || 0
+
+          return {
+            cpu: [...prev.cpu.slice(1), fallbackCpu],
+            memory: [...prev.memory.slice(1), fallbackMemory],
+            responseTime: [...prev.responseTime.slice(1), fallbackResponse]
+          }
+        })
       }
     }, 2000)
 
@@ -221,6 +233,22 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
           </div>
 
           <div className="flex items-center gap-4">
+            {lastUpdated && (
+              <div className="bg-white/10 px-4 py-2 rounded-lg border border-white/20 text-right">
+                <div className="text-white/70 text-xs mb-1">Last Update</div>
+                <div className="text-white text-sm font-semibold font-mono">
+                  {new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </div>
+              </div>
+            )}
+
+            {Array.isArray(xrayServices) && xrayServices.length > 0 && (
+              <div className="bg-white/10 px-4 py-2 rounded-lg border border-white/20 text-right">
+                <div className="text-white/70 text-xs mb-1">X-Ray Services</div>
+                <div className="text-white text-sm font-semibold">{xrayServices.length}</div>
+              </div>
+            )}
+
             {/* Elapsed Time */}
             {deploymentStarted && (
               <div className="bg-white/10 px-4 py-2 rounded-lg border border-white/20">
