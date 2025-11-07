@@ -72,7 +72,7 @@ async function getCloudWatchMetrics(serviceName) {
                 --metric-data-queries '${query}' \
                 --start-time "${startTime}" \
                 --end-time "${endTime}" \
-                --region ap-northeast-1 \
+                --region ap-northeast-2\
                 --output json`
         );
 
@@ -105,7 +105,7 @@ async function getCloudWatchLogs(logGroupName, limit = 20) {
                 --log-group-name "${logGroupName}" \
                 --start-time ${fiveMinutesAgo} \
                 --limit ${limit} \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
@@ -136,7 +136,7 @@ async function getXRayServiceGraph() {
             `aws xray get-service-graph \
                 --start-time ${startTime} \
                 --end-time ${endTime} \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
@@ -222,7 +222,7 @@ async function getXRayTraceSummaries() {
             `aws xray get-trace-summaries \
                 --start-time ${startTime} \
                 --end-time ${endTime} \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
@@ -242,7 +242,7 @@ async function getCodePipelineStatus(pipelineName = 'softbank-demo-pipeline') {
         const { stdout } = await execPromise(
             `aws codepipeline get-pipeline-state \
                 --name ${pipelineName} \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
@@ -268,10 +268,10 @@ async function getCodeBuildStatus(projectName = 'softbank-demo-build') {
                 --ids $(aws codebuild list-builds-for-project \
                     --project-name ${projectName} \
                     --max-items 1 \
-                    --region ap-northeast-1 \
+                    --region ap-northeast-2 \
                     --query 'ids[0]' \
                     --output text) \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
@@ -304,7 +304,7 @@ async function getCodeDeployStatus(deploymentGroupName = 'softbank-demo-dg', app
                 --application-name ${applicationName} \
                 --deployment-group-name ${deploymentGroupName} \
                 --max-items 1 \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
@@ -317,7 +317,7 @@ async function getCodeDeployStatus(deploymentGroupName = 'softbank-demo-dg', app
         const { stdout: detailStdout } = await execPromise(
             `aws deploy get-deployment \
                 --deployment-id ${deploymentId} \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
@@ -346,7 +346,7 @@ async function getALBTargetHealth(targetGroupArn) {
         const { stdout } = await execPromise(
             `aws elbv2 describe-target-health \
                 --target-group-arn ${targetGroupArn} \
-                --region ap-northeast-1 \
+                --region ap-northeast-2 \
                 --output json`
         );
 
