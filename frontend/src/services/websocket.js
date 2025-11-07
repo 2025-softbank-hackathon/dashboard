@@ -6,7 +6,7 @@ class WebSocketService {
     this._pollTimer = null
   }
 
-  connect(url = 'ws://localhost:8080') {
+  connect(url = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) || 'ws://localhost:8080') {
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(url)
