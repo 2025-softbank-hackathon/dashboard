@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import useDeploymentStore from '../store/useDeploymentStore'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -131,6 +132,33 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
     const time = new Date(Date.now() - (29 - i) * 2000)
     return time.toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' })
   })
+
+  const { metricsLoading } = useDeploymentStore()
+
+  if (metricsLoading) {
+    return (
+      <div className="w-full space-y-6">
+        <div className="w-full">
+          <div className="mb-4 text-white/80 text-sm">Fetching AWS metrics...</div>
+          <div className="grid grid-cols-2 gap-6">
+            {[0,1].map((i) => (
+              <div key={i} className="space-y-4">
+                <div className="h-6 w-40 bg-white/10 animate-pulse rounded" />
+                <div className="grid grid-cols-2 gap-4">
+                  {[...Array(4)].map((_, idx) => (
+                    <div key={idx} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <div className="h-4 w-24 bg-white/10 animate-pulse rounded mb-2" />
+                      <div className="h-8 w-20 bg-white/20 animate-pulse rounded" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full space-y-6">
