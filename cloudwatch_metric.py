@@ -30,7 +30,7 @@ def handle_connect(connection_id: str):
 
 def handle_disconnect(connection_id: str):
     table = dynamodb.Table(DDB_TABLE_NAME)
-    table.delete_item(Key={"pk": connection_id, "connectionId": connection_id})
+    table.delete_item(Key={"connectionId": connection_id})
     print(f"Connection disconnected: {connection_id}")
     return {"statusCode": 200, "body": "Disconnected."}
 
