@@ -2,16 +2,6 @@ import json
 import boto3
 from datetime import datetime, timedelta
 
-# 고정 값 주입
-DDB_TABLE_NAME      = "dev-websocket-connections2"
-ECS_CLUSTER_NAME    = "chatapp-dev-cluster"
-BLUE_SERVICE_NAME   = "chatapp-dev-service-blue"
-GREEN_SERVICE_NAME  = "chatapp-dev-service-green"
-ALB_ARN_SUFFIX      = "app/chatapp-dev-alb/df2c09c406bc14b1"
-BLUE_TARGET_GROUP   = "targetgroup/chatapp-dev-blue-tg/7247c5293ea8d7f0"
-GREEN_TARGET_GROUP  = "targetgroup/chatapp-dev-green-tg/0b5e0e9f548f1388"
-API_GW_ENDPOINT_URL = "https://rysusu6e4a.execute-api.ap-northeast-2.amazonaws.com/dev"
-
 dynamodb = boto3.resource("dynamodb")
 cloudwatch = boto3.client("cloudwatch")
 apigateway_management = None
@@ -41,25 +31,15 @@ def get_cloudwatch_metrics(start_time: datetime, end_time: datetime) -> dict:
     print("Fetching CloudWatch metrics...")
 
     metric_queries = [
-        { "Id": "ecs_cpu_blue", "Label": "ECS_CPU_Blue",
-          "MetricStat": { "Metric": { "Namespace": "AWS/ECS", "MetricName": "CPUUtilization",
-            "Dimensions": [ {"Name": "ClusterName","Value": ECS_CLUSTER_NAME},
-                            {"Name": "ServiceName","Value": BLUE_SERVICE_NAME} ] },
+        { "Id": "ec2_cpu_blue", "Label": "EC2_CPU_Blue",
+          "MetricStat": { "Metric": { "Namespace": "AWS/ApplicationELB", "MetricName": "CPUUtilization",
+            "Dimensions": [ {"Name": "TargetGroup","Value": BLUE_TARGET_GROUP},
+                            {"Name": "LoadBalancer", "Value": ALB_ARN_SUFFIX} ] },
             "Period": 60, "Stat": "Average" } },
-        { "Id": "ecs_mem_blue", "Label": "ECS_Memory_Blue",
-          "MetricStat": { "Metric": { "Namespace": "AWS/ECS", "MetricName": "MemoryUtilization",
-            "Dimensions": [ {"Name": "ClusterName","Value": ECS_CLUSTER_NAME},
-                            {"Name": "ServiceName","Value": BLUE_SERVICE_NAME} ] },
-            "Period": 60, "Stat": "Average" } },
-        { "Id": "ecs_cpu_green", "Label": "ECS_CPU_Green",
-          "MetricStat": { "Metric": { "Namespace": "AWS/ECS", "MetricName": "CPUUtilization",
-            "Dimensions": [ {"Name": "ClusterName","Value": ECS_CLUSTER_NAME},
-                            {"Name": "ServiceName","Value": GREEN_SERVICE_NAME} ] },
-            "Period": 60, "Stat": "Average" } },
-        { "Id": "ecs_mem_green", "Label": "ECS_Memory_Green",
-          "MetricStat": { "Metric": { "Namespace": "AWS/ECS", "MetricName": "MemoryUtilization",
-            "Dimensions": [ {"Name": "ClusterName","Value": ECS_CLUSTER_NAME},
-                            {"Name": "ServiceName","Value": GREEN_SERVICE_NAME} ] },
+        { "Id": "ec2_cpu_green", "Label": "EC2_CPU_Green",
+          "MetricStat": { "Metric": { "Namespace": "AWS/ApplicationELB", "MetricName": "CPUUtilization",
+            "Dimensions": [ {"Name": "TargetGroup","Value": GREEN_TARGET_GROUP},
+                            {"Name": "LoadBalancer", "Value": ALB_ARN_SUFFIX} ] },
             "Period": 60, "Stat": "Average" } },
         { "Id": "alb_req_blue", "Label": "ALB_Requests_Blue",
           "MetricStat": { "Metric": { "Namespace": "AWS/ApplicationELB", "MetricName": "RequestCount",
