@@ -15,17 +15,9 @@ function App() {
   const audioRef = useRef(null)
 
   useEffect(() => {
-    // Connect to WebSocket server
-    websocket.connect()
-      .then(() => {
-        setWsConnected(true)
-        // Client-driven polling every 5s
-        websocket.startPolling(5000)
-      })
-      .catch((error) => {
-        console.error('Failed to connect to WebSocket:', error)
-        setWsConnected(false)
-      })
+    // Default to mock stream: start polling without WS connection
+    setWsConnected(false)
+    websocket.startPolling(5000)
 
     // Listen to metrics
     websocket.on('metrics', (data) => {
@@ -143,9 +135,14 @@ function App() {
       </button>
 
       {/* Data Mode Toggle (Mock / Real) */}
-      <div className="fixed top-4 left-4 z-50 flex gap-2">
+      {/* Moved to bottom-left to avoid overlapping with background title */}
+      <div className="fixed bottom-6 left-6 z-50 flex gap-2">
         <button
           onClick={() => {
+            // Switch to Mock mode: stop WS and use local mock fallback
+            try { websocket.disconnect() } catch {}
+            websocket.stopPolling()
+            websocket.startPolling(5000)
             websocket.useMockData()
             setDataMode('mock')
             setIsRealMode(false)
@@ -160,13 +157,17 @@ function App() {
         </button>
         <button
           onClick={() => {
+            // Switch to Real mode: connect WS and start polling
+            websocket.disconnect()
+            websocket.connect()
+              .then(() => setWsConnected(true))
+              .catch(() => setWsConnected(false))
             websocket.useRealData()
             setDataMode('real')
             setIsRealMode(true)
             setMetricsLoading(true)
             // immediately request one fetch to reflect real data fast
-            websocket.getXRayGraph?.()
-            websocket.send?.('fetch_metrics')
+            websocket.startPolling(5000)
           }}
           className={`px-3 py-2 rounded-lg border transition-all duration-200 ${
             dataMode === 'real' ? 'bg-white/20 text-white border-white/30' : 'bg-black/30 text-white/80 border-white/10'
