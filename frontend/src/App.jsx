@@ -2,29 +2,22 @@ import { useEffect, useState, useRef } from 'react'
 import useDeploymentStore from './store/useDeploymentStore'
 import websocket from './services/websocket'
 import DeploymentDashboard from './components/DeploymentDashboard'
-import TrafficScreen from './components/TrafficScreen'
+// import TrafficScreen from './components/TrafficScreen' // [Disabled] Page 2 (Traffic) is commented out per request
 import SuccessScreen from './components/SuccessScreen'
 
 function App() {
-  const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog } = useDeploymentStore()
+  const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog, setIsRealMode, setMetricsLoading, isRealMode } = useDeploymentStore()
   const [currentScreen, setCurrentScreen] = useState('deployment') // 'deployment', 'traffic', 'success'
   const [xrayServices, setXrayServices] = useState([])
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
+  const [dataMode, setDataMode] = useState('mock') // 'mock' | 'real'
   const videoRef = useRef(null)
   const audioRef = useRef(null)
 
   useEffect(() => {
-    // Connect to WebSocket server
-    websocket.connect('ws://localhost:8080')
-      .then(() => {
-        setWsConnected(true)
-        // Start monitoring
-        websocket.startMonitoring()
-      })
-      .catch((error) => {
-        console.error('Failed to connect to WebSocket:', error)
-        setWsConnected(false)
-      })
+    // Default to mock stream: start polling without WS connection
+    setWsConnected(false)
+    websocket.startPolling(5000)
 
     // Listen to metrics
     websocket.on('metrics', (data) => {
@@ -34,6 +27,21 @@ function App() {
       if (data.data.green) {
         updateGreenMetrics(data.data.green)
       }
+
+      // When in Real mode, hide loader only after valid AWS numbers arrive
+      try {
+        const currentReal = typeof useDeploymentStore?.getState === 'function' ? useDeploymentStore.getState().isRealMode : isRealMode
+        if (currentReal) {
+          const b = data.data.blue || {}
+          const g = data.data.green || {}
+          const isNum = (v) => typeof v === 'number' && !Number.isNaN(v)
+          const blueOk = isNum(b.cpu) || isNum(b.memory) || isNum(b.responseTime)
+          const greenOk = isNum(g.cpu) || isNum(g.memory) || isNum(g.responseTime)
+          if (blueOk || greenOk) {
+            setMetricsLoading(false)
+          }
+        }
+      } catch {}
     })
 
     // Listen to logs
@@ -64,13 +72,14 @@ function App() {
 
     // Cleanup
     return () => {
-      websocket.stopMonitoring()
+      websocket.stopPolling()
       websocket.disconnect()
     }
   }, [])
 
   const handleDeploymentComplete = () => {
-    setCurrentScreen('traffic')
+    // [Disabled] Skip page 2 (traffic) and go directly to success
+    setCurrentScreen('success')
   }
 
   const handleTrafficComplete = () => {
@@ -125,6 +134,50 @@ function App() {
         )}
       </button>
 
+      {/* Data Mode Toggle (Mock / Real) */}
+      {/* Moved to bottom-left to avoid overlapping with background title */}
+      <div className="fixed bottom-6 left-6 z-50 flex gap-2">
+        <button
+          onClick={() => {
+            // Switch to Mock mode: stop WS and use local mock fallback
+            try { websocket.disconnect() } catch {}
+            websocket.stopPolling()
+            websocket.startPolling(5000)
+            websocket.useMockData()
+            setDataMode('mock')
+            setIsRealMode(false)
+            setMetricsLoading(false)
+          }}
+          className={`px-3 py-2 rounded-lg border transition-all duration-200 ${
+            dataMode === 'mock' ? 'bg-white/20 text-white border-white/30' : 'bg-black/30 text-white/80 border-white/10'
+          }`}
+          title="Switch to Mock data"
+        >
+          Mock
+        </button>
+        <button
+          onClick={() => {
+            // Switch to Real mode: connect WS and start polling
+            websocket.disconnect()
+            websocket.connect()
+              .then(() => setWsConnected(true))
+              .catch(() => setWsConnected(false))
+            websocket.useRealData()
+            setDataMode('real')
+            setIsRealMode(true)
+            setMetricsLoading(true)
+            // immediately request one fetch to reflect real data fast
+            websocket.startPolling(5000)
+          }}
+          className={`px-3 py-2 rounded-lg border transition-all duration-200 ${
+            dataMode === 'real' ? 'bg-white/20 text-white border-white/30' : 'bg-black/30 text-white/80 border-white/10'
+          }`}
+          title="Switch to Real AWS data"
+        >
+          Real
+        </button>
+      </div>
+
       {/* Content Layer */}
       <div className="relative z-10 w-full h-full">
         {currentScreen === 'deployment' && (
@@ -133,7 +186,8 @@ function App() {
             xrayServices={xrayServices}
           />
         )}
-        {currentScreen === 'traffic' && (
+        {/* [Disabled] Page 2 (Traffic) */}
+        {false && currentScreen === 'traffic' && (
           <TrafficScreen onComplete={handleTrafficComplete} xrayServices={xrayServices} />
         )}
         {currentScreen === 'success' && (
