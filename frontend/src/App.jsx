@@ -38,7 +38,8 @@ function App() {
 
       // When in Real mode, hide loader only after valid AWS numbers arrive
       try {
-        if (isRealMode) {
+        const currentReal = typeof useDeploymentStore?.getState === 'function' ? useDeploymentStore.getState().isRealMode : isRealMode
+        if (currentReal) {
           const b = data.data.blue || {}
           const g = data.data.green || {}
           const isNum = (v) => typeof v === 'number' && !Number.isNaN(v)

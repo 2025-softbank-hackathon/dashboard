@@ -8,18 +8,20 @@ class WebSocketService {
     this._pollIntervalMs = 5000
     this._url = null
     this._connectFallbackTimer = null
+    this._usingMock = false
   }
 
   connect(url = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) || 'ws://localhost:8080') {
     return new Promise((resolve, reject) => {
       try {
         this._url = url
+        console.log('WS: connecting to', url)
         this.ws = new WebSocket(url)
         // If connection doesn't open quickly, start mock fallback
         this._startConnectFallbackTimer()
 
         this.ws.onopen = () => {
-          console.log('✅ WebSocket connected')
+          console.log('✅ WS connected', this._url)
           this.emit('connected', { timestamp: new Date().toISOString() })
           // expose simple console helpers for quick manual testing
           try {
@@ -28,7 +30,8 @@ class WebSocketService {
                 send: (command, data = {}) => this.send(command, data),
                 useRealData: () => this.useRealData(),
                 useMockData: () => this.useMockData(),
-                fetchOnce: () => this.send('fetch_metrics')
+                fetchOnce: () => this.send('fetch_metrics'),
+                status: () => ({ connected: this.ws?.readyState === WebSocket.OPEN, url: this._url, usingMock: this._usingMock })
               }
               console.log('ℹ️  Console helpers available: __WS.useRealData(), __WS.useMockData(), __WS.fetchOnce()')
             }
@@ -98,7 +101,7 @@ class WebSocketService {
         }
 
         this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error)
+          console.error('❌ WS error:', error)
           this.emit('error', error)
           // start local mock fallback so UI keeps updating
           this._startMockFallback(this._pollIntervalMs)
@@ -107,7 +110,7 @@ class WebSocketService {
         }
 
         this.ws.onclose = () => {
-          console.log('🔌 WebSocket disconnected')
+          console.log('🔌 WS disconnected')
           this.emit('disconnected', {})
 
           // Auto reconnect
@@ -241,7 +244,8 @@ class WebSocketService {
 
   _startMockFallback(intervalMs = 5000) {
     if (this._mockFallbackTimer) return
-    console.log('🧪 Using local mock metrics fallback')
+    this._usingMock = true
+    console.log('🧪 WS not connected → using mock metrics fallback')
     const genBlue = () => {
       const cpu = 35 + Math.random() * 20 // 35~55%
       const responseTime = 180 + Math.random() * 60 // ms
@@ -268,6 +272,10 @@ class WebSocketService {
     if (this._mockFallbackTimer) {
       clearInterval(this._mockFallbackTimer)
       this._mockFallbackTimer = null
+    }
+    if (this._usingMock) {
+      this._usingMock = false
+      console.log('🔁 Switched to live data (mock fallback stopped)')
     }
   }
 
