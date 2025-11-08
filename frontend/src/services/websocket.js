@@ -4,7 +4,10 @@ class WebSocketService {
     this.reconnectInterval = 3000
     this.listeners = new Map()
     this._pollTimer = null
+    this._mockFallbackTimer = null
+    this._pollIntervalMs = 5000
     this._url = null
+    this._connectFallbackTimer = null
   }
 
   connect(url = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) || 'ws://localhost:8080') {
@@ -12,6 +15,8 @@ class WebSocketService {
       try {
         this._url = url
         this.ws = new WebSocket(url)
+        // If connection doesn't open quickly, start mock fallback
+        this._startConnectFallbackTimer()
 
         this.ws.onopen = () => {
           console.log('✅ WebSocket connected')
@@ -28,6 +33,9 @@ class WebSocketService {
               console.log('ℹ️  Console helpers available: __WS.useRealData(), __WS.useMockData(), __WS.fetchOnce()')
             }
           } catch {}
+          // stop local mock fallback if any
+          this._stopMockFallback()
+          this._clearConnectFallbackTimer()
           resolve(this.ws)
         }
 
@@ -69,6 +77,16 @@ class WebSocketService {
               const adapted = { type: 'metrics', data: { blue, green } }
               console.log('📨 Received(APIGW): metrics', adapted)
               this.emit('metrics', adapted)
+              // Also surface a readable log line in Real/APIGW mode
+              try {
+                const isApiGw = typeof this._url === 'string' && this._url.includes('execute-api')
+                if (isApiGw) {
+                  const b = blue.cpu ?? 'n/a'
+                  const g = green.cpu ?? 'n/a'
+                  const msg = `[METRICS] EC2 CPU Blue=${typeof b==='number'?b.toFixed(1):b}% · Green=${typeof g==='number'?g.toFixed(1):g}%`
+                  this.emit('log', { type: 'log', data: { timestamp: new Date().toISOString(), type: 'info', message: msg } })
+                }
+              } catch {}
               return
             }
 
@@ -82,6 +100,9 @@ class WebSocketService {
         this.ws.onerror = (error) => {
           console.error('❌ WebSocket error:', error)
           this.emit('error', error)
+          // start local mock fallback so UI keeps updating
+          this._startMockFallback(this._pollIntervalMs)
+          this._clearConnectFallbackTimer()
           reject(error)
         }
 
@@ -94,6 +115,9 @@ class WebSocketService {
             console.log('🔄 Attempting to reconnect...')
             this.connect(url)
           }, this.reconnectInterval)
+          // keep UI alive with local mock
+          this._startMockFallback(this._pollIntervalMs)
+          this._clearConnectFallbackTimer()
         }
       } catch (error) {
         console.error('Failed to create WebSocket:', error)
@@ -143,6 +167,7 @@ class WebSocketService {
       clearInterval(this._pollTimer)
       this._pollTimer = null
     }
+    this._stopMockFallback()
   }
 
   // Convenience methods
@@ -181,11 +206,16 @@ class WebSocketService {
   // Client-driven polling every `intervalMs` to request fresh metrics
   startPolling(intervalMs = 5000) {
     if (this._pollTimer) clearInterval(this._pollTimer)
+    this._pollIntervalMs = intervalMs
     // Kick off immediately once
     this._requestMetricsOnce()
     this._pollTimer = setInterval(() => {
       this._requestMetricsOnce()
     }, intervalMs)
+    // If not connected, start local mock fallback immediately
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this._startMockFallback(intervalMs)
+    }
   }
 
   stopPolling() {
@@ -206,6 +236,54 @@ class WebSocketService {
       }
     } else {
       this.send('fetch_metrics')
+    }
+  }
+
+  _startMockFallback(intervalMs = 5000) {
+    if (this._mockFallbackTimer) return
+    console.log('🧪 Using local mock metrics fallback')
+    const genBlue = () => {
+      const cpu = 35 + Math.random() * 20 // 35~55%
+      const responseTime = 180 + Math.random() * 60 // ms
+      return { cpu, memory: null, responseTime, errorRate: 0.05, timestamp: new Date().toISOString() }
+    }
+    const genGreenFromBlue = (blue) => {
+      // Slightly different from blue to simulate 2c AZ
+      const delta = (Math.random() - 0.5) * 6 // -3% ~ +3%
+      const cpu = Math.max(0, Math.min(100, blue.cpu + delta))
+      const responseTime = Math.max(50, blue.responseTime + (Math.random() - 0.5) * 20)
+      return { cpu, memory: null, responseTime, errorRate: 0.04, timestamp: new Date().toISOString() }
+    }
+    const emitOnce = () => {
+      const blue = genBlue()
+      const green = genGreenFromBlue(blue)
+      const payload = { type: 'metrics', data: { blue, green } }
+      this.emit('metrics', payload)
+    }
+    emitOnce()
+    this._mockFallbackTimer = setInterval(emitOnce, intervalMs)
+  }
+
+  _stopMockFallback() {
+    if (this._mockFallbackTimer) {
+      clearInterval(this._mockFallbackTimer)
+      this._mockFallbackTimer = null
+    }
+  }
+
+  _startConnectFallbackTimer(delayMs = 1500) {
+    this._clearConnectFallbackTimer()
+    this._connectFallbackTimer = setTimeout(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        this._startMockFallback(this._pollIntervalMs)
+      }
+    }, delayMs)
+  }
+
+  _clearConnectFallbackTimer() {
+    if (this._connectFallbackTimer) {
+      clearTimeout(this._connectFallbackTimer)
+      this._connectFallbackTimer = null
     }
   }
 }
