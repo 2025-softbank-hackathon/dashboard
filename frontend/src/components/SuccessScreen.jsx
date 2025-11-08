@@ -27,7 +27,7 @@ export default function SuccessScreen() {
   }, [])
 
   return (
-    <div className="w-full h-screen relative overflow-hidden flex items-center justify-center bg-transparent">
+    <div className="w-full h-screen relative overflow-y-auto flex items-start justify-center bg-transparent">
       {/* Pochita for page 3 */}
       <PochitaPage3 />
 
@@ -54,7 +54,7 @@ export default function SuccessScreen() {
         ))}
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-8 w-full">
+      <div className="relative z-10 max-w-6xl mx-auto px-8 w-full py-12">
         {/* Success Header */}
         <motion.div
           initial={{ scale: 0 }}
