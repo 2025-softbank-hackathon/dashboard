@@ -176,117 +176,32 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
         </motion.div>
       </div>
 
-      {/* Environment Comparison */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Blue Environment Metrics */}
-        <div className="space-y-4">
-          <div className="text-center">
-            <h4 className="text-blue-400 text-xl font-bold mb-4">Blue Environment</h4>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <MetricCard
-              title="CPU Usage"
-              value={blueMetrics.cpu?.toFixed(0) || '--'}
-              unit="%"
-              trend={Math.random() > 0.5 ? 2 : -2}
-              label="CPU"
-              color="blue"
-            />
-            <MetricCard
-              title="Memory"
-              value={blueMetrics.memory?.toFixed(0) || '--'}
-              unit="%"
-              trend={Math.random() > 0.5 ? 1 : -1}
-              label="MEM"
-              color="blue"
-            />
-            <MetricCard
-              title="Response Time"
-              value={Math.round(blueMetrics.responseTime) || '--'}
-              unit="ms"
-              trend={Math.random() > 0.5 ? 5 : -3}
-              label="RT"
-              color="yellow"
-            />
-            <MetricCard
-              title="Error Rate"
-              value={(blueMetrics.errorRate * 100)?.toFixed(1) || '--'}
-              unit="%"
-              trend={Math.random() > 0.5 ? 0.5 : -0.3}
-              label="ERR"
-              color="red"
-            />
-          </div>
-        </div>
 
-        {/* Green Environment Metrics */}
-        <div className="space-y-4">
-          <div className="text-center">
-            <h4 className="text-green-400 text-xl font-bold mb-4">Green Environment</h4>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <MetricCard
-              title="CPU Usage"
-              value={greenMetrics.cpu?.toFixed(0) || '--'}
-              unit="%"
-              trend={Math.random() > 0.5 ? 2 : -2}
-              label="CPU"
-              color="green"
-            />
-            <MetricCard
-              title="Memory"
-              value={greenMetrics.memory?.toFixed(0) || '--'}
-              unit="%"
-              trend={Math.random() > 0.5 ? 1 : -1}
-              label="MEM"
-              color="green"
-            />
-            <MetricCard
-              title="Response Time"
-              value={Math.round(greenMetrics.responseTime) || '--'}
-              unit="ms"
-              trend={Math.random() > 0.5 ? 3 : -5}
-              label="RT"
-              color="yellow"
-            />
-            <MetricCard
-              title="Error Rate"
-              value={(greenMetrics.errorRate * 100)?.toFixed(1) || '--'}
-              unit="%"
-              trend={Math.random() > 0.5 ? 0.2 : -0.6}
-              label="ERR"
-              color="red"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Real-time Charts (AZ-based CPU) */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* CPU Usage Chart - ap-northeast-2a */}
-        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-          <h4 className="text-white font-bold mb-4">CPU Usage Over Time - ap-northeast-2a</h4>
-          <div className="h-48">
-            <RealtimeChart
-              data={blueHistory.cpu || []}
-              labels={timeLabels}
-              label="ap-northeast-2a"
-              color="rgb(59, 130, 246)"
-            />
-          </div>
-        </div>
-
-        {/* CPU Usage Chart - ap-northeast-2c (Memory chart replaced) */}
-        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-          <h4 className="text-white font-bold mb-4">CPU Usage Over Time - ap-northeast-2c</h4>
-          <div className="h-48">
-            <RealtimeChart
-              data={greenHistory.cpu || []}
-              labels={timeLabels}
-              label="ap-northeast-2c"
-              color="rgb(74, 222, 128)"
-            />
-          </div>
+      {/* Real-time Chart: CPU (Blue/Green average) */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+        <h4 className="text-white font-bold mb-4">CPU Usage Over Time (Average)</h4>
+        <div className="h-48">
+          {(() => {
+            const cpuBlue = (blueHistory && blueHistory.cpu) || []
+            const cpuGreen = (greenHistory && greenHistory.cpu) || []
+            const len = Math.max(cpuBlue.length, cpuGreen.length)
+            const avgCpu = Array.from({ length: len }, (_, i) => {
+              const b = cpuBlue[i]
+              const g = cpuGreen[i]
+              const bn = typeof b === 'number' && !Number.isNaN(b) ? b : null
+              const gn = typeof g === 'number' && !Number.isNaN(g) ? g : null
+              if (bn != null && gn != null) return (bn + gn) / 2
+              return bn ?? gn ?? null
+            })
+            return (
+              <RealtimeChart
+                data={avgCpu}
+                labels={timeLabels}
+                label="Average CPU (Blue + Green)"
+                color="rgb(168, 85, 247)" /* purple */
+              />
+            )
+          })()}
         </div>
       </div>
     </div>
