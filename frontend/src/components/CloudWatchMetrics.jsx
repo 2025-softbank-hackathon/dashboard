@@ -261,112 +261,32 @@ export default function CloudWatchMetrics({ blueMetrics, greenMetrics, blueHisto
         </div>
       </div>
 
-      {/* Real-time Charts */}
+      {/* Real-time Charts (AZ-based CPU) */}
       <div className="grid grid-cols-2 gap-6">
-        {/* CPU Usage Chart */}
+        {/* CPU Usage Chart - ap-northeast-2a */}
         <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-          <h4 className="text-white font-bold mb-4">CPU Usage Over Time</h4>
+          <h4 className="text-white font-bold mb-4">CPU Usage Over Time - ap-northeast-2a</h4>
           <div className="h-48">
             <RealtimeChart
               data={blueHistory.cpu || []}
               labels={timeLabels}
-              label="Blue CPU"
+              label="ap-northeast-2a"
               color="rgb(59, 130, 246)"
             />
           </div>
         </div>
 
-        {/* Memory Usage Chart */}
+        {/* CPU Usage Chart - ap-northeast-2c (Memory chart replaced) */}
         <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-          <h4 className="text-white font-bold mb-4">Memory Usage Over Time</h4>
+          <h4 className="text-white font-bold mb-4">CPU Usage Over Time - ap-northeast-2c</h4>
           <div className="h-48">
             <RealtimeChart
-              data={blueHistory.memory || []}
+              data={greenHistory.cpu || []}
               labels={timeLabels}
-              label="Blue Memory"
-              color="rgb(59, 130, 246)"
+              label="ap-northeast-2c"
+              color="rgb(74, 222, 128)"
             />
           </div>
-        </div>
-      </div>
-
-      {/* Comparison Charts */}
-      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-        <h4 className="text-white font-bold mb-4">Blue vs Green Response Time Comparison</h4>
-        <div className="h-64">
-          <Line
-            data={{
-              labels: timeLabels,
-              datasets: [
-                {
-                  label: 'Blue Response Time',
-                  data: blueHistory.responseTime || [],
-                  borderColor: 'rgb(59, 130, 246)',
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  fill: true,
-                  tension: 0.4,
-                  pointRadius: 0,
-                  borderWidth: 3
-                },
-                {
-                  label: 'Green Response Time',
-                  data: greenHistory.responseTime || [],
-                  borderColor: 'rgb(74, 222, 128)',
-                  backgroundColor: 'rgba(74, 222, 128, 0.1)',
-                  fill: true,
-                  tension: 0.4,
-                  pointRadius: 0,
-                  borderWidth: 3
-                }
-              ]
-            }}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: true,
-                  labels: {
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    font: {
-                      size: 14
-                    }
-                  }
-                },
-                tooltip: {
-                  mode: 'index',
-                  intersect: false,
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  titleColor: '#fff',
-                  bodyColor: '#fff',
-                  borderWidth: 2
-                }
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  ticks: {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    callback: function(value) {
-                      return value + ' ms'
-                    }
-                  }
-                },
-                x: {
-                  grid: {
-                    display: false
-                  },
-                  ticks: {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    maxTicksLimit: 10
-                  }
-                }
-              }
-            }}
-          />
         </div>
       </div>
     </div>
