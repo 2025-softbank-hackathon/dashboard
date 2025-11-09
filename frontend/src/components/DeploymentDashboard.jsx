@@ -6,7 +6,7 @@ import CloudWatchMetrics from './CloudWatchMetrics'
 import LogStream from './LogStream'
 import PochitaStatic from './PochitaStatic'
 
-export default function DeploymentDashboard({ onDeploymentComplete, xrayServices }) {
+export default function DeploymentDashboard({ onDeploymentComplete }) {
   const {
     blueMetrics,
     greenMetrics,

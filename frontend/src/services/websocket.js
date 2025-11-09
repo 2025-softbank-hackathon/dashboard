@@ -190,9 +190,7 @@ class WebSocketService {
     this.send('terraform_apply')
   }
 
-  getXRayGraph() {
-    this.send('get_xray_graph')
-  }
+  
 
   getLogs() {
     this.send('get_logs')

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import useDeploymentStore from '../store/useDeploymentStore'
-import XRayServiceMap2D from './XRayServiceMap2D'
+ 
 import PochitaPage2 from './PochitaPage2'
 
-export default function TrafficScreen({ onComplete, xrayServices }) {
+export default function TrafficScreen({ onComplete }) {
   const { updateBlueMetrics, updateGreenMetrics, addLog } = useDeploymentStore()
   const [greenTraffic, setGreenTraffic] = useState(0)
 
@@ -105,9 +105,6 @@ export default function TrafficScreen({ onComplete, xrayServices }) {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white text-2xl font-bold">
               AWS Architecture - Real-time Service Map
-              {xrayServices && xrayServices.length > 0 && (
-                <span className="text-sm text-green-400 ml-2">(Live)</span>
-              )}
             </h3>
 
             {/* Service Type Legend */}
@@ -144,7 +141,6 @@ export default function TrafficScreen({ onComplete, xrayServices }) {
           </div>
 
           <div className="h-[calc(100%-4rem)] rounded-xl overflow-hidden">
-            <XRayServiceMap2D showGreen={true} services={xrayServices} />
           </div>
         </div>
 

@@ -70,11 +70,15 @@ function App() {
       console.log('CodeDeploy status:', data.data)
     })
 
-    // Listen to X-Ray service map updates
-    websocket.on('xray_service_map', (data) => {
-      console.log('X-Ray service map:', data.data)
-      setXrayServices(data.data)
+    // Listen to deploy events inferred from log_stream (APIGW)
+    websocket.on('deploy_event', (evt) => {
+      if (evt && evt.status === 'succeeded') {
+        console.log('💚 CodeDeploy succeeded — switching to success screen')
+        setCurrentScreen('success')
+      }
     })
+
+    
 
     // Cleanup
     return () => {
@@ -285,12 +289,11 @@ function App() {
         {currentScreen === 'deployment' && (
           <DeploymentDashboard
             onDeploymentComplete={handleDeploymentComplete}
-            xrayServices={xrayServices}
           />
         )}
         {/* [Disabled] Page 2 (Traffic) */}
         {false && currentScreen === 'traffic' && (
-          <TrafficScreen onComplete={handleTrafficComplete} xrayServices={xrayServices} />
+          <TrafficScreen onComplete={handleTrafficComplete} />
         )}
         {currentScreen === 'success' && (
           <SuccessScreen />
