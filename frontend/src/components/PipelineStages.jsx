@@ -30,7 +30,7 @@ const PIPELINE_STAGES = [
     id: 'deploy',
     name: 'CodeDeploy',
     icon: '▶',
-    description: 'Deploying to ECS'
+    description: 'Deploying to EC2'
   },
   {
     id: 'health',

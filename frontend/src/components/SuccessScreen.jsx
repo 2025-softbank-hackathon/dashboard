@@ -15,7 +15,7 @@ const DEPLOYMENT_TIMELINE = [
   { time: '0:24', event: 'Tests: 84 unit + smoke suites green', status: 'completed' },
   { time: '0:38', event: 'Security: Trivy/Snyk scan clean', status: 'completed' },
   { time: '0:52', event: 'ECR: Image pushed sha256:f92e...', status: 'completed' },
-  { time: '1:08', event: 'CodeDeploy: Green ECS tasks warmed', status: 'completed' },
+  { time: '1:08', event: 'CodeDeploy: Green EC2 tasks warmed', status: 'completed' },
   { time: '1:20', event: 'Health: ALB + synthetic checks passed', status: 'completed' },
   { time: '1:30', event: 'Traffic shift: 100% demo audience', status: 'completed' }
 ]

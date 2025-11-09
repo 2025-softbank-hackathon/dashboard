@@ -130,7 +130,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
         logs: [
           '[INFO] Deployment started (ID: d-ABC123)',
           '[INFO] Creating Green environment tasks...',
-          '[SUCCESS] ECS tasks created successfully',
+          '[SUCCESS] Deploy to Green tasks created successfully',
           '[INFO] Updating task definition...',
           '[SUCCESS] Task definition updated (revision: 42)',
           '[INFO] Starting new tasks...',
