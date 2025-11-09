@@ -109,7 +109,7 @@ export default function SuccessScreen() {
           <div className="text-white/70 text-sm mb-2">Service URL</div>
           <div className="flex items-center gap-4">
             <div className="flex-1 bg-black/30 rounded-lg px-4 py-3 font-mono text-green-400 text-lg">
-              https://demo-green.delightful-deployment.com
+              https://chat.one393.shop
             </div>
             <button className="bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-lg transition-colors">
               Copy URL

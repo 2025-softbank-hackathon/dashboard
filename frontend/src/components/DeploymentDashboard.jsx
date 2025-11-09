@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useDeploymentStore from '../store/useDeploymentStore'
 import PipelineStages from './PipelineStages'
@@ -22,6 +22,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
   const [stageStatuses, setStageStatuses] = useState({})
   const [stageLogs, setStageLogs] = useState({})
   const [elapsedTime, setElapsedTime] = useState(0)
+  const autoStartRef = useRef(false)
 
   // Metrics history for charts
   const [blueHistory, setBlueHistory] = useState({
@@ -203,6 +204,12 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
     }, 500)
   }
 
+  useEffect(() => {
+    if (autoStartRef.current) return
+    autoStartRef.current = true
+    startDeployment()
+  }, [])
+
   return (
     <div className="w-full h-screen overflow-y-auto relative bg-transparent">
       {/* Static Pochita */}
@@ -231,19 +238,6 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
               </div>
             )}
 
-            {/* Deploy Button */}
-            {!deploymentStarted && (
-              <motion.button
-                onClick={startDeployment}
-                disabled={isDeploying}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-4 px-8 rounded-xl shadow-2xl text-xl"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {isDeploying ? 'Deploying...' : 'Start Deployment'}
-              </motion.button>
-            )}
-
             {/* Status Badge */}
             <div className={`px-4 py-2 rounded-lg font-bold ${
               isDeploying
@@ -252,7 +246,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
                   ? 'bg-green-500 text-black'
                   : 'bg-gray-600 text-white'
             }`}>
-              {isDeploying ? 'DEPLOYING' : deploymentStarted ? 'COMPLETE' : 'READY'}
+              {isDeploying ? 'DEPLOYING' : deploymentStarted ? 'COMPLETE' : 'AUTO-STARTING'}
             </div>
           </div>
         </div>

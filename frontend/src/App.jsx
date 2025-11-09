@@ -5,6 +5,8 @@ import DeploymentDashboard from './components/DeploymentDashboard'
 // import TrafficScreen from './components/TrafficScreen' // [Disabled] Page 2 (Traffic) is commented out per request
 import SuccessScreen from './components/SuccessScreen'
 
+const CELEBRATION_DURATION_MS = 600 // ~0.5s clip for rezebomb gif + audio
+
 function App() {
   const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog, setIsRealMode, setMetricsLoading, isRealMode } = useDeploymentStore()
   const [currentScreen, setCurrentScreen] = useState('deployment') // 'deployment', 'traffic', 'success'
@@ -120,7 +122,7 @@ function App() {
       }
       setIsCelebrating(false)
       setCurrentScreen('success')
-    }, 1500)
+    }, CELEBRATION_DURATION_MS)
 
     return () => clearTimeout(timer)
   }, [isCelebrating])
@@ -147,7 +149,7 @@ function App() {
 
       {/* Celebration Audio */}
       <audio ref={celebrationAudioRef}>
-        <source src="https://chatapp-dev-static-f841f30e.s3.ap-northeast-2.amazonaws.com/assets/bomb-sound.mp4" type="audio/mp4" />
+        <source src="https://d3ro18w755ioec.cloudfront.net/assets/bomb-sound.mp4" type="audio/mp4" />
       </audio>
 
       {/* Audio Control Button */}
@@ -215,13 +217,13 @@ function App() {
       <div className="relative z-10 w-full h-full">
         {isCelebrating && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
-            <div className="flex flex-col items-center">
+            <div className="relative w-full h-full flex items-center justify-center">
               <img
-                src="https://chatapp-dev-static-f841f30e.s3.ap-northeast-2.amazonaws.com/assets/rezebomb.gif"
+                src="https://d3ro18w755ioec.cloudfront.net/assets/rezebomb.gif"
                 alt="Celebration animation"
-                className="w-72 h-72 object-contain mb-6 drop-shadow-[0_0_25px_rgba(255,255,255,0.45)]"
+                className="w-full h-full object-cover drop-shadow-[0_0_35px_rgba(255,255,255,0.35)]"
               />
-              <p className="text-white text-lg tracking-wide">
+              <p className="absolute bottom-16 text-white text-xl tracking-wide">
                 Turning traffic to green in style...
               </p>
             </div>
