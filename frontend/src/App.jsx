@@ -5,7 +5,7 @@ import DeploymentDashboard from './components/DeploymentDashboard'
 // import TrafficScreen from './components/TrafficScreen' // [Disabled] Page 2 (Traffic) is commented out per request
 import SuccessScreen from './components/SuccessScreen'
 
-const CELEBRATION_DURATION_MS = 600 // ~0.5s clip for rezebomb gif + audio
+const CELEBRATION_DURATION_MS = 6500 // fallback timeout in case the clip end event doesn't fire
 
 function App() {
   const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog, setIsRealMode, setMetricsLoading, isRealMode } = useDeploymentStore()
@@ -16,7 +16,9 @@ function App() {
   const videoRef = useRef(null)
   const audioRef = useRef(null)
   const [isCelebrating, setIsCelebrating] = useState(false)
-  const celebrationAudioRef = useRef(null)
+  const celebrationVideoRef = useRef(null)
+  const [celebrationNeedsInteraction, setCelebrationNeedsInteraction] = useState(false)
+  const backgroundAudioWasPlayingRef = useRef(false)
 
   useEffect(() => {
     // Default to mock stream: start polling without WS connection
@@ -104,28 +106,71 @@ function App() {
   useEffect(() => {
     if (!isCelebrating) return
 
-    const celebratoryAudio = celebrationAudioRef.current
-    const playAudio = async () => {
+    const celebratoryVideo = celebrationVideoRef.current
+    if (!celebratoryVideo) {
+      setIsCelebrating(false)
+      setCurrentScreen('success')
+      return
+    }
+
+    const backgroundAudio = audioRef.current
+    if (backgroundAudio && !backgroundAudio.paused) {
+      backgroundAudioWasPlayingRef.current = true
+      backgroundAudio.pause()
+      setIsAudioPlaying(false)
+    } else {
+      backgroundAudioWasPlayingRef.current = false
+    }
+
+    setCelebrationNeedsInteraction(false)
+    celebratoryVideo.currentTime = 0
+
+    const handleEnded = () => {
+      if (backgroundAudioWasPlayingRef.current && backgroundAudio) {
+        backgroundAudio.play().catch(() => {})
+        setIsAudioPlaying(true)
+      }
+      backgroundAudioWasPlayingRef.current = false
+      setIsCelebrating(false)
+      setCurrentScreen('success')
+    }
+
+    celebratoryVideo.addEventListener('ended', handleEnded)
+
+    const playVideo = async () => {
       try {
-        await celebratoryAudio?.play()
+        await celebratoryVideo.play()
+        setCelebrationNeedsInteraction(false)
       } catch (error) {
-        console.warn('Celebration audio failed to play', error)
+        console.warn('Celebration video failed to autoplay', error)
+        setCelebrationNeedsInteraction(true)
       }
     }
 
-    playAudio()
+    playVideo()
 
     const timer = setTimeout(() => {
-      if (celebratoryAudio) {
-        celebratoryAudio.pause()
-        celebratoryAudio.currentTime = 0
-      }
-      setIsCelebrating(false)
-      setCurrentScreen('success')
+      celebratoryVideo.pause()
+      handleEnded()
     }, CELEBRATION_DURATION_MS)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      celebratoryVideo.pause()
+      celebratoryVideo.removeEventListener('ended', handleEnded)
+    }
   }, [isCelebrating])
+
+  const handleManualCelebrationPlay = async () => {
+    const celebratoryVideo = celebrationVideoRef.current
+    if (!celebratoryVideo) return
+    try {
+      await celebratoryVideo.play()
+      setCelebrationNeedsInteraction(false)
+    } catch (error) {
+      console.warn('Manual celebration play failed', error)
+    }
+  }
 
   return (
     <div className="w-screen h-screen overflow-hidden relative">
@@ -145,11 +190,6 @@ function App() {
       {/* Background Audio */}
       <audio ref={audioRef} loop>
         <source src="https://d3ro18w755ioec.cloudfront.net/assets/background-video.mp4" type="audio/mpeg" />
-      </audio>
-
-      {/* Celebration Audio */}
-      <audio ref={celebrationAudioRef}>
-        <source src="https://d3ro18w755ioec.cloudfront.net/assets/bomb-sound.mp4" type="audio/mp4" />
       </audio>
 
       {/* Audio Control Button */}
@@ -218,14 +258,27 @@ function App() {
         {isCelebrating && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
             <div className="relative w-full h-full flex items-center justify-center">
-              <img
-                src="https://d3ro18w755ioec.cloudfront.net/assets/rezebomb.gif"
-                alt="Celebration animation"
-                className="w-full h-full object-cover drop-shadow-[0_0_35px_rgba(255,255,255,0.35)]"
-              />
-              <p className="absolute bottom-16 text-white text-xl tracking-wide">
+              <video
+                ref={celebrationVideoRef}
+                className="w-full h-full object-cover"
+                playsInline
+                preload="auto"
+                muted={false}
+                controls={false}
+              >
+                <source src="https://d3ro18w755ioec.cloudfront.net/assets/clip_12_to_18.mp4" type="video/mp4" />
+              </video>
+              <p className="absolute bottom-16 text-white text-xl tracking-wide text-center px-4">
                 Turning traffic to green in style...
               </p>
+              {celebrationNeedsInteraction && (
+                <button
+                  onClick={handleManualCelebrationPlay}
+                  className="absolute bottom-32 bg-white/20 text-white px-6 py-3 rounded-xl border border-white/40 backdrop-blur-md hover:bg-white/30 font-semibold"
+                >
+                  ▶︎ Play clip
+                </button>
+              )}
             </div>
           </div>
         )}
