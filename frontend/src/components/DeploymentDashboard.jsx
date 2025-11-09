@@ -77,7 +77,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       {
         id: 'commit',
         name: 'CodeCommit',
-        duration: 2000,
+        duration: 6000,
         logs: [
           '[INFO] Fetching latest commit from repository...',
           '[SUCCESS] Retrieved commit sha: abc123def456',
@@ -87,7 +87,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       {
         id: 'build',
         name: 'CodeBuild',
-        duration: 8000,
+        duration: 24000,
         logs: [
           '[INFO] Build started (Build ID: demo-build-1234)',
           '[INFO] Provisioning build environment (docker:20)...',
@@ -102,7 +102,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       {
         id: 'test',
         name: 'Unit Tests',
-        duration: 5000,
+        duration: 15000,
         logs: [
           '[INFO] Running test suite...',
           '[SUCCESS] Unit tests: 32/32 passed',
@@ -114,7 +114,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       {
         id: 'push',
         name: 'Push to ECR',
-        duration: 4000,
+        duration: 10000,
         logs: [
           '[INFO] Pushing image to Amazon ECR...',
           '[INFO] Uploading layers...',
@@ -125,7 +125,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       {
         id: 'deploy',
         name: 'CodeDeploy',
-        duration: 6000,
+        duration: 20000,
         logs: [
           '[INFO] Deployment started (ID: d-ABC123)',
           '[INFO] Creating Green environment tasks...',
@@ -139,7 +139,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       {
         id: 'health',
         name: 'Health Check',
-        duration: 5000,
+        duration: 15000,
         logs: [
           '[INFO] Running health checks...',
           '[SUCCESS] Health check 1/3 passed',
@@ -200,7 +200,7 @@ export default function DeploymentDashboard({ onDeploymentComplete, xrayServices
       if (onDeploymentComplete) {
         onDeploymentComplete()
       }
-    }, 2000)
+    }, 500)
   }
 
   return (

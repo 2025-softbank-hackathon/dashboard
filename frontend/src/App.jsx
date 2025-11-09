@@ -13,6 +13,8 @@ function App() {
   const [dataMode, setDataMode] = useState('mock') // 'mock' | 'real'
   const videoRef = useRef(null)
   const audioRef = useRef(null)
+  const [isCelebrating, setIsCelebrating] = useState(false)
+  const celebrationAudioRef = useRef(null)
 
   useEffect(() => {
     // Default to mock stream: start polling without WS connection
@@ -78,8 +80,8 @@ function App() {
   }, [])
 
   const handleDeploymentComplete = () => {
-    // [Disabled] Skip page 2 (traffic) and go directly to success
-    setCurrentScreen('success')
+    // Trigger celebratory media before showing the success screen
+    setIsCelebrating(true)
   }
 
   const handleTrafficComplete = () => {
@@ -96,6 +98,32 @@ function App() {
       setIsAudioPlaying(!isAudioPlaying)
     }
   }
+
+  useEffect(() => {
+    if (!isCelebrating) return
+
+    const celebratoryAudio = celebrationAudioRef.current
+    const playAudio = async () => {
+      try {
+        await celebratoryAudio?.play()
+      } catch (error) {
+        console.warn('Celebration audio failed to play', error)
+      }
+    }
+
+    playAudio()
+
+    const timer = setTimeout(() => {
+      if (celebratoryAudio) {
+        celebratoryAudio.pause()
+        celebratoryAudio.currentTime = 0
+      }
+      setIsCelebrating(false)
+      setCurrentScreen('success')
+    }, 1500)
+
+    return () => clearTimeout(timer)
+  }, [isCelebrating])
 
   return (
     <div className="w-screen h-screen overflow-hidden relative">
@@ -115,6 +143,11 @@ function App() {
       {/* Background Audio */}
       <audio ref={audioRef} loop>
         <source src="https://d3ro18w755ioec.cloudfront.net/assets/background-video.mp4" type="audio/mpeg" />
+      </audio>
+
+      {/* Celebration Audio */}
+      <audio ref={celebrationAudioRef}>
+        <source src="https://chatapp-dev-static-f841f30e.s3.ap-northeast-2.amazonaws.com/assets/bomb-sound.mp4" type="audio/mp4" />
       </audio>
 
       {/* Audio Control Button */}
@@ -180,6 +213,20 @@ function App() {
 
       {/* Content Layer */}
       <div className="relative z-10 w-full h-full">
+        {isCelebrating && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
+            <div className="flex flex-col items-center">
+              <img
+                src="https://chatapp-dev-static-f841f30e.s3.ap-northeast-2.amazonaws.com/assets/rezebomb.gif"
+                alt="Celebration animation"
+                className="w-72 h-72 object-contain mb-6 drop-shadow-[0_0_25px_rgba(255,255,255,0.45)]"
+              />
+              <p className="text-white text-lg tracking-wide">
+                Turning traffic to green in style...
+              </p>
+            </div>
+          </div>
+        )}
         {currentScreen === 'deployment' && (
           <DeploymentDashboard
             onDeploymentComplete={handleDeploymentComplete}

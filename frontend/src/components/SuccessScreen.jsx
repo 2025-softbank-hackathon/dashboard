@@ -2,6 +2,24 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import PochitaPage3 from './PochitaPage3'
 
+const TARGET_STATS = {
+  totalRequests: 24,
+  avgResponseTime: 312,
+  errorRate: 0,
+  uptime: 99.98
+}
+
+const DEPLOYMENT_TIMELINE = [
+  { time: '0:00', event: 'CodeCommit: Patchset merged & tagged (v1.12.4)', status: 'completed' },
+  { time: '0:08', event: 'CodeBuild: Cached layers restored, base image hydrated', status: 'completed' },
+  { time: '0:24', event: 'Tests: 84 unit + smoke suites green', status: 'completed' },
+  { time: '0:38', event: 'Security: Trivy/Snyk scan clean', status: 'completed' },
+  { time: '0:52', event: 'ECR: Image pushed sha256:f92e...', status: 'completed' },
+  { time: '1:08', event: 'CodeDeploy: Green ECS tasks warmed', status: 'completed' },
+  { time: '1:20', event: 'Health: ALB + synthetic checks passed', status: 'completed' },
+  { time: '1:30', event: 'Traffic shift: 100% demo audience', status: 'completed' }
+]
+
 export default function SuccessScreen() {
   const [stats, setStats] = useState({
     totalRequests: 0,
@@ -11,17 +29,27 @@ export default function SuccessScreen() {
   })
 
   useEffect(() => {
-    // Animate stats counting up
     const interval = setInterval(() => {
-      setStats(prev => ({
-        totalRequests: Math.min(prev.totalRequests + 150, 15234),
-        avgResponseTime: Math.min(prev.avgResponseTime + 3, 188),
-        errorRate: Math.min(prev.errorRate + 0.001, 0.023),
-        uptime: Math.min(prev.uptime + 0.5, 99.99)
-      }))
-    }, 50)
+      setStats(prev => {
+        const next = {
+          totalRequests: Math.min(prev.totalRequests + 2, TARGET_STATS.totalRequests),
+          avgResponseTime: Math.min(prev.avgResponseTime + 16, TARGET_STATS.avgResponseTime),
+          errorRate: TARGET_STATS.errorRate,
+          uptime: Math.min(prev.uptime + 4, TARGET_STATS.uptime)
+        }
 
-    setTimeout(() => clearInterval(interval), 3000)
+        const reachedTarget =
+          next.totalRequests === TARGET_STATS.totalRequests &&
+          next.avgResponseTime === TARGET_STATS.avgResponseTime &&
+          next.uptime === TARGET_STATS.uptime
+
+        if (reachedTarget) {
+          clearInterval(interval)
+        }
+
+        return next
+      })
+    }, 80)
 
     return () => clearInterval(interval)
   }, [])
@@ -67,7 +95,7 @@ export default function SuccessScreen() {
             Deployment Successful!
           </h1>
           <p className="text-2xl text-white/80">
-            Your application is now live on the Green environment
+            Green environment is serving the demo canary slice
           </p>
         </motion.div>
 
@@ -103,7 +131,7 @@ export default function SuccessScreen() {
               <div className="text-4xl font-bold text-green-400">
                 {stats.totalRequests.toLocaleString()}
               </div>
-              <div className="text-white/60 text-xs mt-2">Last 5 minutes</div>
+              <div className="text-white/60 text-xs mt-2">Last 15 min canary traffic</div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
@@ -112,16 +140,16 @@ export default function SuccessScreen() {
                 {Math.round(stats.avgResponseTime)}ms
               </div>
               <div className="text-green-400 text-xs mt-2 flex items-center gap-1">
-                <span>↓</span> 23% faster
+                <span>↓</span> p95 480ms (QA load)
               </div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <div className="text-white/70 text-sm mb-2">Error Rate</div>
               <div className="text-4xl font-bold text-yellow-400">
-                {stats.errorRate.toFixed(3)}%
+                {stats.errorRate.toFixed(2)}%
               </div>
-              <div className="text-white/60 text-xs mt-2">Within SLA</div>
+              <div className="text-white/60 text-xs mt-2">0 incidents this shift</div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
@@ -129,7 +157,7 @@ export default function SuccessScreen() {
               <div className="text-4xl font-bold text-green-400">
                 {stats.uptime.toFixed(2)}%
               </div>
-              <div className="text-white/60 text-xs mt-2">30 days</div>
+              <div className="text-white/60 text-xs mt-2">Rolling 30‑day demo cluster</div>
             </div>
           </div>
         </motion.div>
@@ -187,15 +215,7 @@ export default function SuccessScreen() {
           <h2 className="text-2xl font-bold text-white mb-4">Deployment Timeline</h2>
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
             <div className="space-y-4">
-              {[
-                { time: '0:00', event: 'CodeCommit: Source retrieved', status: 'completed' },
-                { time: '0:02', event: 'CodeBuild: Docker image built', status: 'completed' },
-                { time: '0:08', event: 'Tests: All 47 tests passed', status: 'completed' },
-                { time: '0:12', event: 'ECR: Image pushed successfully', status: 'completed' },
-                { time: '0:16', event: 'CodeDeploy: Green environment created', status: 'completed' },
-                { time: '0:21', event: 'Health Check: All checks passed', status: 'completed' },
-                { time: '0:24', event: 'Traffic Shift: 100% to Green', status: 'completed' }
-              ].map((item, index) => (
+              {DEPLOYMENT_TIMELINE.map((item, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, x: -20 }}
