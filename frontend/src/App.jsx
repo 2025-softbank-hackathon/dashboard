@@ -10,7 +10,7 @@ const CELEBRATION_DURATION_MS = 6500 // fallback timeout in case the clip end ev
 function App() {
   const { setWsConnected, updateBlueMetrics, updateGreenMetrics, addLog, setIsRealMode, setMetricsLoading, isRealMode } = useDeploymentStore()
   const [currentScreen, setCurrentScreen] = useState('deployment') // 'deployment', 'traffic', 'success'
-  const [xrayServices, setXrayServices] = useState([])
+  
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const [dataMode, setDataMode] = useState('mock') // 'mock' | 'real'
   const videoRef = useRef(null)
